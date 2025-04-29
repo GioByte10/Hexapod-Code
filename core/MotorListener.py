@@ -28,10 +28,12 @@ class MotorListener(Listener):
 		if msg.arbitration_id in self.motors.keys():
 			self.motors[msg.arbitration_id].process_message(msg)
 		
-		elif msg.arbitration_id == 4: print()
+		elif msg.arbitration_id == 4:
+			pass
 		
 		else:
-			print(f"~~~~~Received message from unknown motor: {msg.arbitration_id}~~~~~~~~~")
+			pass
+			#print(f"~~~~~Received message from unknown motor: {msg.arbitration_id}~~~~~~~~~")
 
 
 			

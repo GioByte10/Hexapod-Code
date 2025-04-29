@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
 import can
 import core.CANHelper
 from core.CanUJoint import CanUJoint
@@ -7,7 +11,7 @@ if __name__ == "__main__":
   core.CANHelper.init("can0") # Intiailize can0
   can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan') # Create can bus object 
 
-  testMotor = CanUJoint(can0, 3, 1) # Initialize motor with can bus object 
+  testMotor = CanUJoint(can0, 7, 1) # Initialize motor with can bus object
   
   print("Enter Desired Control method")
   print("1 = Position Control (Rotations)")

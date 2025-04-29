@@ -1,3 +1,5 @@
+from mailbox import Message
+
 import can
 import math
 from .CanUtils import CanUtils, command_dict
@@ -79,7 +81,33 @@ class CanMotor(object):
 		self.read_status_once()
 		self.clear_error_flag()
 		self.motor_off()
-	
+
+	def control(self):
+		msg = Message()
+		msg = self._motor_command_modifier_callback(msg)
+		self._single_send(msg.data)
+
+	def datadump(self):
+		print(f"{'Control Mode:':<20} {self.motor_data.command_mode}")
+
+		if self.motor_data.command_mode == "position":
+			print(f"{'Target:':<20} {self.motor_data.target_position}")
+
+		elif self.motor_data.command_mode == "speed":
+			print(f"{'Target:':<20} {self.motor_data.target_speed}")
+
+		elif self.motor_data.command_mode == "torque":
+			print(f"{'Target:':<20} {self.motor_data.target_torque}")
+
+		print(f"{'Single Turn Position:':<20} {self.motor_data.singleturn_position}")
+		print(f"{'Multi Turn Position:':<20} {self.motor_data.multiturn_position}")
+		print(f"{'Speed:':<20} {self.motor_data.speed}")
+		print(f"{'Torque:':<20} {self.motor_data.torque}")
+		print(f"{'Temperature:':<20} {self.motor_data.temperature}")
+		print(f"{'Voltage:':<20} {self.motor_data.voltage}")
+		print(f"{'Error State:':<20} {self.motor_data.error_state}")
+		print(f"{'Last Update:':<20} {self.motor_data.last_update}")
+
 	# Called everytime a new message for this motor is recieved, filters according to msg type (first byte)
 	def process_message(self, msg):
 		'''
@@ -130,7 +158,7 @@ class CanMotor(object):
 
 			# print("Motor voltage = ", voltage, ", temperature = ", temp, ", Error State = ", err_state_str)
 			
-		elif msg.data[0] == 0x9c: # Read motor status (singleturn position, speed, torque)
+		elif msg.data[0] == 0x9C: # Read motor status (singleturn position, speed, torque)
 			# encoder readings are in (high byte, low byte)
 			torque = self.utils.readBytes(msg.data[3], msg.data[2])
 			torque = self.utils.encToAmp(torque)
@@ -142,7 +170,7 @@ class CanMotor(object):
 			self.motor_data.singleturn_position = position
 			self.motor_data.speed = speed
 			self.motor_data.torque = torque
-			self.motor_data.last_update = (hex(0x9c), msg.timestamp)
+			self.motor_data.last_update = (hex(0x9C), msg.timestamp)
 
 			# print("Singleturn position = ", position, ", speed = ", speed, ", torque = ", torque)
 
@@ -204,6 +232,15 @@ class CanMotor(object):
 		for task in self.active_tasks:
 			task.stop()
 		self.active_tasks.clear()
+
+	# def safe_send(self, bus, msg, retries=10, delay=0.01):
+	# 	for _ in range(retries):
+	# 		try:
+	# 			bus.send(msg)
+	# 			return  # success
+	# 		except can.CanOperationError:
+	# 			time.sleep(delay)  # wait a little and retry
+	# 	raise Exception("Failed to send CAN message after retries.")
 
 	# util function for sending a single message, don't wait for reply
 	def _single_send(self, data):
@@ -345,6 +382,19 @@ class CanMotor(object):
 		task = self._periodic_send(msg_data, period, duration)
 		return task
 
+	def read_multiturn_once(self):
+		'''
+		Single send for reading motor multiturn
+		Args:
+			period (float): period in between each message (seconds)
+			duration (float, optional): duration to send messages for (seconds). Defaults to None (meaning indefinitely)
+
+		Returns:
+			task object that can be used to stop periodic send
+		'''
+		msg_data = [0x92, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+		self._single_send(msg_data)
+
 	def read_motor_state_periodic(self, period=0.1, duration=None):
 		'''
 		Periodic send for reading motor state (single turn position, speed, and torque)
@@ -355,9 +405,22 @@ class CanMotor(object):
 		Returns:
 			task object that can be used to stop periodic send
 		'''
-		msg_data = [0x9c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+		msg_data = [0x9C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 		task = self._periodic_send(msg_data, period, duration)
 		return task
+
+	def read_motor_state_once(self):
+		'''
+		SIngle send for reading motor state (single turn position, speed, and torque)
+		Args:
+			period (float): period in between each message (seconds)
+			duration (float, optional): duration to send messages for (seconds). Defaults to None (meaning indefinitely)
+
+		Returns:
+			task object that can be used to stop periodic send
+		'''
+		msg_data = [0x9C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+		self._single_send(msg_data)
 
 	def _motor_command_modifier_callback(self, msg):
 		'''

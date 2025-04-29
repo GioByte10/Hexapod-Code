@@ -17,7 +17,7 @@ if __name__ == "__main__":
 	can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
 	# Initial CanMotor objects (does not try to send any messages yet)
-	motor1 = CanMotor(can0, motor_id = 2, gear_ratio = 1)
+	motor1 = CanMotor(can0, motor_id = 7, gear_ratio = 1)
 	motor_list = [motor1]  # Add all motors to the listener
 	motor_listener = MotorListener(motor_list=motor_list)
 	input("Start Notifier")
