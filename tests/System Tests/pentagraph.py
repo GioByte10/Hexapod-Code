@@ -1,3 +1,4 @@
+import math
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
@@ -30,10 +31,27 @@ if __name__ == "__main__":
     time.sleep(1)
     input("Continue")
 
-    m_static.set_control_mode("speed", 0)
-    m_static.control()
 
-    m_dynamic.set_control_mode("torque", 0.6)
+    # m_static.set_control_mode("position", 4.3)
+    # m_static.control()
+    #
+    # m_dynamic.set_control_mode("position", 1.1)
+    # m_dynamic.control()
+
+    m_static.read_status_once()
+    m_static.read_multiturn_once()
+    m_static.read_motor_state_once()
+    m_static.datadump()
+
+    m_dynamic.read_status_once()
+    m_dynamic.read_multiturn_once()
+    m_dynamic.read_motor_state_once()
+    m_dynamic.datadump()
+
+    m_static.set_control_mode("torque", 1)
+    m_dynamic.set_control_mode("torque", 1)
+
+    m_static.control()
     m_dynamic.control()
 
     try:
@@ -43,6 +61,19 @@ if __name__ == "__main__":
             m_static.read_multiturn_once()
             m_static.read_motor_state_once()
             m_static.datadump()
+
+            p_static = m_static.motor_data.singleturn_position + 2 * math.pi - 5.5
+            if m_static.motor_data.singleturn_position + 2 * math.pi - 5.4 > 2 * math.pi:
+                p_static -= 2 * math.pi
+
+            t_static = p_static - math.pi
+            t_static = math.sin(t_static)
+
+            # m_static.set_control_mode("torque", 3 * t_static)
+            # m_static.control()
+
+            print(p_static)
+            print(t_static)
             print()
 
             print("=============================dynamic=============================")
@@ -51,7 +82,22 @@ if __name__ == "__main__":
             m_dynamic.read_motor_state_once()
             m_dynamic.datadump()
 
-            time.sleep(0.05)
+            p_dynamic = m_dynamic.motor_data.singleturn_position + 2 * math.pi - 2.1
+            if m_dynamic.motor_data.singleturn_position + 2 * math.pi - 2.03 > 2 * math.pi:
+                p_dynamic -= 2 * math.pi
+
+            print(p_dynamic)
+
+
+            t_dynamic = p_dynamic - math.pi
+            t_dynamic = math.sin(t_dynamic)
+
+            # m_dynamic.set_control_mode("torque", 3 * t_dynamic)
+            # m_dynamic.control()
+
+            print(t_dynamic)
+
+            time.sleep(0.07)
             pass
 
     except KeyboardInterrupt:
