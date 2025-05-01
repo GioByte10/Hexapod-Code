@@ -19,7 +19,7 @@ Do this by running the installation.sh file alternatively, you can manually run 
 
 ```
 sudo apt-get install git
-git clone https://github.com/ucsdarclab/arcsnake_v2.git
+git clone https://github.com/GioByte10/Hexapod-Code.git
 ```
 
 ## Installing Packages
