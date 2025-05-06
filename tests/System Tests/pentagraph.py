@@ -48,8 +48,8 @@ if __name__ == "__main__":
     m_dynamic.read_motor_state_once()
     m_dynamic.datadump()
 
-    m_static.set_control_mode("torque", 1)
-    m_dynamic.set_control_mode("torque", 1)
+    m_static.set_control_mode("torque", -7)
+    m_dynamic.set_control_mode("torque", -7)
 
     m_static.control()
     m_dynamic.control()
