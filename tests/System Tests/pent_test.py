@@ -27,7 +27,7 @@ if __name__ == "__main__":
     input("Continue")
 
     motor.initialize_control_command()
-    # motor.set_control_mode("torque", 8)
+    # motor.set_control_mode("torque", 0)
     # motor.control()
 
     try:
