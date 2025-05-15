@@ -40,51 +40,68 @@ pip install matplotlib
 pip install python-can
 ```
 
-# Running test programs
+## Add Python to ubuntu path
 
+- type sudo gedit ~/.bashrc in /home directory 
+- Insert this command near end of text file: 
+  '''
+    export PATH="$HOME/Desktop/Hexapod-Code:$PATH"
+  '''
+- Run source ~/.bashrc
+- save and verify by running echo $PATH in terminal 
+
+## Otherwise
+```Python
+# Add at the top of the file
+from os.path import dirname, realpath  
+import sys  
+arcsnake_v2_path = dirname(dirname(realpath(__file__)))  
+sys.path.append(arcsnake_v2_path)
+``` 
+
+# Running test programs
 cd inside of arcsnake directory 
 run 
 '''
 python3 tests/test_sanity.py
 '''
 
-# Installing Ros (fix up)
+# GitHub Setup
+Follow these steps to be able to contribute to the repository
 
+## Configure Identity
+```
+git config --global user.name "your-github-username"
+git config --global user.email "your-github-email@example.com"
+```
 
-# Notes:
+## Caching Credentials
+Make sure `curl` and `apt-transport-https` are installed
+```
+sudo apt update
+sudo apt install curl apt-transport-https
+```
 
-## Add Python to ubuntu path
+Get GitHub CLI package from its repository
+```
+curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /usr/share/keyrings/githubcli-archive-keyring.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+```
 
-- type sudo gedit ~/.bashrc in /home directory 
-- Insert this command near end of text file: 
-  '''
-    export PATH="$HOME/myeoh/Documents/GitHub/arcsnake_v2:$PATH"
-  '''
-- Run source ~/.bashrc
-- save and verify by running echo $PATH in terminal 
+Install it
+```
+sudo apt update
+sudo apt install gh
+```
 
-## Otherwise, if issues with Path stuff insert this into top of code
+Verify installation
+```
+gh --version
+```
 
-from os.path import dirname, realpath  
-import sys  
-arcsnake_v2_path = dirname(dirname(realpath(__file__)))  
-sys.path.append(arcsnake_v2_path)  
+Cache credentials
+```
+gh auth login
+```
 
-# Setting up the Longan Board
-## Basic setup
-1) Navigate to https://www.arduino.cc/en/software
-2) Scroll down the page and download "Arduino IDE 2.0 RC". It is a much improved IDE than the old Arduino software
-3) Open up the humiditytest.ino file in the Arduino IDE(arcsnake_v2/ArduinoSensors/humidtytest)
-4) Make sure that the humidity sensor is wired up according to the pin declared in the Arduino sketch 
-5) Locate drop down menu at the top of the IDE and ensure that your board is selected. The Longa board will show up as a Arduino Leonardo
-6) Press upload
-7) Open the Serial monitor with ctrl+shift+m
-8) Make sure baudrate of serial monitor is 9600
-9) If the correct readings are printing to the Serial monitor then everything is in order!
-
-## Uploading and testing Arduino - Python CAN
-1) Open the ArduinoSensors.ino file (arcsnake_v2/ArduinoSensors/ArduinoSensors)
-2) Upload
-3) Connect the CAN H and CAN L from the Longan board to the appropriate pins on the USB to CAN device 
-4) Run the test_ArduinoSensors.py file
-5) If the correct numbers are printing on Python's terminal as well as Arduino's terminal then everything is good
+Select `GitHub.com`, `HTTPS`, `Login with a web browser`. Go to [hhtps://github.com/login/device](hhtps://github.com/login/device) on another device (e.g., computer) and type the code
