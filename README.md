@@ -59,12 +59,14 @@ arcsnake_v2_path = dirname(dirname(realpath(__file__)))
 sys.path.append(arcsnake_v2_path)
 ``` 
 
-# Running test programs
+## Running test programs
 cd inside of arcsnake directory 
 run 
-'''
-python3 tests/test_sanity.py
-'''
+
+```
+cd Hexapod-Code/tests/System Tests
+python3 pent_test.py
+```
 
 # GitHub Setup
 Follow these steps to be able to contribute to the repository
