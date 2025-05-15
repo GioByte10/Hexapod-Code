@@ -9,6 +9,17 @@ import core.CANHelper
 import can
 import time
 
+def end():
+    for motor in motors:
+        motor.stop_all_tasks()
+        motor.motor_off()
+
+    notifier.stop()
+    core.CANHelper.cleanup("can0")
+    can0.shutdown()
+    print("Exiting")
+    exit(0)
+
 
 if __name__ == "__main__":
 
@@ -42,14 +53,22 @@ if __name__ == "__main__":
 
     t = float(sys.argv[1])
 
+    if len(sys.argv) == 3:
+        s = int(sys.argv[2])
+
+    else:
+        s = 1
+
     m_dynamic.set_control_mode("torque", -t)
     m_static.set_control_mode("torque", -t)
 
     m_static.control()
     m_dynamic.control()
 
+    start_time = time.time()
+
     try:
-        while True:
+        while time.time() - start_time < s:
             print("=============================dynamic=============================")
             m_dynamic.read_status_once()
             m_dynamic.read_multiturn_once()
@@ -69,13 +88,7 @@ if __name__ == "__main__":
             time.sleep(0.07)
             pass
 
-    except KeyboardInterrupt:
-        for motor in motors:
-            motor.stop_all_tasks()
-            motor.motor_off()
+        end()
 
-        notifier.stop()
-        core.CANHelper.cleanup("can0")
-        can0.shutdown()
-        print("Exiting")
-        exit(0)
+    except KeyboardInterrupt:
+        end()
