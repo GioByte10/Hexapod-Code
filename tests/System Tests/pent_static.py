@@ -9,7 +9,6 @@ import core.CANHelper
 import can
 import time
 
-
 if __name__ == "__main__":
 
     core.CANHelper.init("can0")
