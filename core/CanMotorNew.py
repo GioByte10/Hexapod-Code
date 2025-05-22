@@ -10,6 +10,9 @@ import pandas as pd
 from dataclasses import dataclass
 from typing import Tuple
 from can import ThreadSafeBus
+from typing import List
+from dataclasses import dataclass, field
+import numpy as np
 
 # Dataclass for storing current motor data, will be updated on receiving new messages
 @dataclass
@@ -24,7 +27,8 @@ class MotorData:
 	temperature: float = 0
 	voltage: float = 0
 	error_state: str = ""
-	PI_values: Tuple[int, int, int, int, int, int] = (0, 0, 0, 0, 0, 0) # Kp_pos, Ki_pos, Kp_speed, Ki_speed, Kp_torque, Ki_torque
+	pid_values: List[int] = field(default_factory=list)
+	PI_values: Tuple[int, int, int, int, int, int, int] = (0, 0, 0, 0, 0, 0, 0) # Kp_torque, Ki_torque, Kp_speed, Ki_speed, Kp_pos, Ki_pos, kd_pos
 	last_update: Tuple[int, float] = (0, 0) # (msg_type, timestamp). Could change this so each parameter has its own last update time
 	command_mode: str = "" # This can be position, speed, (in theory torque one day)
 	# Should we use timestamp from CAN message our our own timing, i.e. time.time() - self.wakeup_time?
@@ -87,16 +91,20 @@ class CanMotor(object):
 		msg = self._motor_command_modifier_callback(msg)
 		self._single_send(msg.data)
 
+
 	def datadump(self):
 		print(f"{'Control Mode:':<20} {self.motor_data.command_mode}")
 
 		if self.motor_data.command_mode == "position":
+			print(f"{'PID:':<20} {self.motor_data.pid_values[4:7]}")
 			print(f"{'Target:':<20} {self.motor_data.target_position}")
 
 		elif self.motor_data.command_mode == "speed":
+			print(f"{'PID:':<20} {self.motor_data.pid_values[2:4]}")
 			print(f"{'Target:':<20} {self.motor_data.target_speed}")
 
 		elif self.motor_data.command_mode == "torque":
+			print(f"{'PID:':<20} {self.motor_data.pid_values[0:2]}")
 			print(f"{'Target:':<20} {self.motor_data.target_torque}")
 
 		print(f"{'Single Turn Position:':<20} {self.motor_data.singleturn_position}")
@@ -172,7 +180,24 @@ class CanMotor(object):
 			self.motor_data.torque = torque
 			self.motor_data.last_update = (hex(0x9C), msg.timestamp)
 
-			# print("Singleturn position = ", position, ", speed = ", speed, ", torque = ", torque)
+		elif msg.data[0] == 0x30:	# Read PID values
+			index = msg.data[1]
+
+			if index >= 7:
+				index -= 2
+
+			elif index >= 4:
+				index -= 1
+
+			index -= 1
+
+			b1 = msg.data[4]
+			b2 = msg.data[5]
+			b3 = msg.data[6]
+			b4 = msg.data[7]
+
+			self.motor_data.pid_values[index] = (np.frombuffer(np.uint32((b4 << 24) | (b3 << 16) | (b2 << 8) | b1).tobytes(), dtype=np.float32)[0])
+
 
 		elif msg.data[0] == 0x92: # Read multi-turn position
 			byte_list = []
@@ -267,6 +292,40 @@ class CanMotor(object):
 		'''
 		msg_data = [0x9A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 		self._single_send(msg_data)
+
+
+	def read_pid_once(self, delay = 0.02):
+		if self.motor_data.command_mode == "torque":
+			msg_data = [0x30, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+			self._single_send(msg_data)
+			time.sleep(delay)
+
+			msg_data = [0x30, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+			self._single_send(msg_data)
+			time.sleep(delay)
+
+		elif self.motor_data.command_mode == "speed":
+			msg_data = [0x30, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+			self._single_send(msg_data)
+			time.sleep(delay)
+
+			msg_data = [0x30, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+			self._single_send(msg_data)
+			time.sleep(delay)
+
+		elif self.motor_data.command_mode == "position":
+			msg_data = [0x30, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+			self._single_send(msg_data)
+			time.sleep(delay)
+
+			msg_data = [0x30, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+			self._single_send(msg_data)
+			time.sleep(delay)
+
+			msg_data = [0x30, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+			self._single_send(msg_data)
+			time.sleep(delay)
+
 
 	def motor_stop(self):
 		'''

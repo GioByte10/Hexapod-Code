@@ -32,7 +32,7 @@ class CanUtils:
     def readBytes(self, high_byte, low_byte):
         """Converts values from 2-byte hexadecimal to decimal value
         -
-        """        
+        """
         decimal_val = np.int16(np.uint16((high_byte << 8) | low_byte))
         return decimal_val 
 
