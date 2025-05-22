@@ -88,15 +88,11 @@ if __name__ == "__main__":
             m_D.read_motor_state_once()
             m_D.datadump()
 
-
-
             print("=============================static=============================")
             m_A.read_status_once()
             m_A.read_multiturn_once()
             m_A.read_motor_state_once()
             m_A.datadump()
-
-
 
             time.sleep(0.07)
             pass
@@ -104,4 +100,12 @@ if __name__ == "__main__":
         end()
 
     except KeyboardInterrupt:
-        end()
+        for motor in motors:
+            motor.stop_all_tasks()
+            motor.motor_off()
+
+        notifier.stop()
+        core.CANHelper.cleanup("can0")
+        can0.shutdown()
+        print("Exiting")
+        exit(0)

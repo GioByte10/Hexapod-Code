@@ -14,13 +14,14 @@ if __name__ == "__main__":
     core.CANHelper.init("can0")
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
-    motor = CanMotor(can0, motor_id=0, gear_ratio=1)
-    motor_list = [motor]
-    motor_listener = MotorListener(motor_list=motor_list)
+    # motor = CanMotor(can0, motor_id=7, gear_ratio=1) #m_A
+    motor = CanMotor(can0, motor_id=7, gear_ratio=1)   #m_D
+    motors = [motor]
+    motor_listener = MotorListener(motor_list=motors)
 
     notifier = can.Notifier(can0, [motor_listener])
 
-    for motor in motor_list:
+    for motor in motors:
         motor.initialize_motor()
 
     time.sleep(1)

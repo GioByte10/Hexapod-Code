@@ -15,10 +15,9 @@ if __name__ == "__main__":
     core.CANHelper.init("can0")
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
-    m_static = CanMotor(can0, motor_id=7, gear_ratio=1)
-    m_dynamic = CanMotor(can0, motor_id=0, gear_ratio=1)
-
-    motors = [m_static, m_dynamic]
+    m_A = CanMotor(can0, motor_id=7, gear_ratio=1)
+    m_D = CanMotor(can0, motor_id=0, gear_ratio=1)
+    motors = [m_A, m_D]
     motor_listener = MotorListener(motor_list=motors)
 
     notifier = can.Notifier(can0, [motor_listener])
@@ -27,75 +26,74 @@ if __name__ == "__main__":
         motor.initialize_motor()
         motor.initialize_control_command()
 
-
     time.sleep(1)
     input("Continue")
 
 
-    # m_static.set_control_mode("position", 4.3)
-    # m_static.control()
+    # m_A.set_control_mode("position", 4.3)
+    # m_A.control()
     #
-    # m_dynamic.set_control_mode("position", 1.1)
-    # m_dynamic.control()
+    # m_D.set_control_mode("position", 1.1)
+    # m_D.control()
 
-    m_static.read_status_once()
-    m_static.read_multiturn_once()
-    m_static.read_motor_state_once()
-    m_static.datadump()
+    m_A.read_status_once()
+    m_A.read_multiturn_once()
+    m_A.read_motor_state_once()
+    m_A.datadump()
 
-    m_dynamic.read_status_once()
-    m_dynamic.read_multiturn_once()
-    m_dynamic.read_motor_state_once()
-    m_dynamic.datadump()
+    m_D.read_status_once()
+    m_D.read_multiturn_once()
+    m_D.read_motor_state_once()
+    m_D.datadump()
 
-    m_static.set_control_mode("torque", -7)
-    m_dynamic.set_control_mode("torque", -7)
+    m_A.set_control_mode("torque", -7)
+    m_D.set_control_mode("torque", -7)
 
-    m_static.control()
-    m_dynamic.control()
+    m_A.control()
+    m_D.control()
 
     try:
         while True:
-            print("=============================static=============================")
-            m_static.read_status_once()
-            m_static.read_multiturn_once()
-            m_static.read_motor_state_once()
-            m_static.datadump()
+            print("=============================m_A=============================")
+            m_A.read_status_once()
+            m_A.read_multiturn_once()
+            m_A.read_motor_state_once()
+            m_A.datadump()
 
-            p_static = m_static.motor_data.singleturn_position + 2 * math.pi - 5.5
-            if m_static.motor_data.singleturn_position + 2 * math.pi - 5.4 > 2 * math.pi:
-                p_static -= 2 * math.pi
+            p_A = m_A.motor_data.singleturn_position + 2 * math.pi - 5.5
+            if m_A.motor_data.singleturn_position + 2 * math.pi - 5.4 > 2 * math.pi:
+                p_A -= 2 * math.pi
 
-            t_static = p_static - math.pi
-            t_static = math.sin(t_static)
+            t_A = p_A - math.pi
+            t_A = math.sin(t_A)
 
-            # m_static.set_control_mode("torque", 3 * t_static)
-            # m_static.control()
+            # m_A.set_control_mode("torque", 3 * t_A)
+            # m_A.control()
 
-            print(p_static)
-            print(t_static)
+            print(p_A)
+            print(t_A)
             print()
 
-            print("=============================dynamic=============================")
-            m_dynamic.read_status_once()
-            m_dynamic.read_multiturn_once()
-            m_dynamic.read_motor_state_once()
-            m_dynamic.datadump()
+            print("=============================D=============================")
+            m_D.read_status_once()
+            m_D.read_multiturn_once()
+            m_D.read_motor_state_once()
+            m_D.datadump()
 
-            p_dynamic = m_dynamic.motor_data.singleturn_position + 2 * math.pi - 2.1
-            if m_dynamic.motor_data.singleturn_position + 2 * math.pi - 2.03 > 2 * math.pi:
-                p_dynamic -= 2 * math.pi
+            p_D = m_D.motor_data.singleturn_position + 2 * math.pi - 2.1
+            if m_D.motor_data.singleturn_position + 2 * math.pi - 2.03 > 2 * math.pi:
+                p_D -= 2 * math.pi
 
-            print(p_dynamic)
+            print(p_D)
 
 
-            t_dynamic = p_dynamic - math.pi
-            t_dynamic = math.sin(t_dynamic)
+            t_D = p_D - math.pi
+            t_D = math.sin(t_D)
 
-            # m_dynamic.set_control_mode("torque", 3 * t_dynamic)
-            # m_dynamic.control()
+            # m_D.set_control_mode("torque", 3 * t_D)
+            # m_D.control()
 
-            print(t_dynamic)
+            print(t_D)
 
             time.sleep(0.07)
             pass
