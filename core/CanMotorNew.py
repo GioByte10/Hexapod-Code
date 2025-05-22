@@ -31,12 +31,8 @@ class MotorData:
 	
 # Class used for motor control, each instance represents a motor
 class CanMotor(object):
-	def __init__(self, bus: ThreadSafeBus, motor_id, gear_ratio,
-				 MIN_POS=-999 * 2 * math.pi,
-				 MAX_POS=999 * 2 * math.pi,
-				 motor_type="screw",
-				 MAX_SPEED: float = (1890 * 2 * math.pi) / 60,
-				 name=None):  # Added optional name for identification in debug/test output
+	def __init__(self, bus:ThreadSafeBus, motor_id, gear_ratio, MIN_POS = -999 * 2 * math.pi, MAX_POS = 999 * 2 * math.pi, motor_type = "screw",
+			  MAX_SPEED:float = (1890*2*math.pi)/60):
 		"""Intializes motor object 
 		-
 		Args:
@@ -60,8 +56,6 @@ class CanMotor(object):
 		self.min_pos = MIN_POS
 		self.max_pos = MAX_POS
 		self.max_speed = MAX_SPEED
-
-		self.name = name if name else f"Motor {motor_id}"  # Store a human-readable name for printouts
 
 		# Encoder value range depends on motor type
 		if motor_type == "joint":
@@ -93,37 +87,26 @@ class CanMotor(object):
 		msg = self._motor_command_modifier_callback(msg)
 		self._single_send(msg.data)
 
-	# def datadump(self):
-	# 	print(f"{'Control Mode:':<20} {self.motor_data.command_mode}")
-	# 	if self.motor_data.command_mode == "position":
-	# 		print(f"{'Target:':<20} {self.motor_data.target_position}")
-	# 	elif self.motor_data.command_mode == "speed":
-	# 		print(f"{'Target:':<20} {self.motor_data.target_speed}")
-	# 	elif self.motor_data.command_mode == "torque":
-	# 		print(f"{'Target:':<20} {self.motor_data.target_torque}")
-	# 	print(f"{'Single Turn Position:':<20} {self.motor_data.singleturn_position}")
-	# 	print(f"{'Multi Turn Position:':<20} {self.motor_data.multiturn_position}")
-	# 	print(f"{'Speed:':<20} {self.motor_data.speed}")
-	# 	print(f"{'Torque:':<20} {self.motor_data.torque}")
-	# 	print(f"{'Temperature:':<20} {self.motor_data.temperature}")
-	# 	print(f"{'Voltage:':<20} {self.motor_data.voltage}")
-	# 	print(f"{'Error State:':<20} {self.motor_data.error_state}")
-	# 	print(f"{'Last Update:':<20} {self.motor_data.last_update}")
-
 	def datadump(self):
-		print(f"\n===================== {self.name} =====================")
-		# Matching field names from MotorData class for safe output
-		print(f"Command Mode:        {self.motor_data.command_mode}")
-		print(f"Target Position:     {self.motor_data.target_position}")
-		print(f"Target Speed:        {self.motor_data.target_speed}")
-		print(f"Single Turn Position:{self.motor_data.singleturn_position}")
-		print(f"Multi Turn Position: {self.motor_data.multiturn_position}")
-		print(f"Speed:               {self.motor_data.speed}")
-		print(f"Torque:              {self.motor_data.torque}")
-		print(f"Temperature:         {self.motor_data.temperature}")
-		print(f"Voltage:             {self.motor_data.voltage}")
-		print(f"Error State:         {self.motor_data.error_state}")
-		print(f"Last Update:         {self.motor_data.last_update}")
+		print(f"{'Control Mode:':<20} {self.motor_data.command_mode}")
+
+		if self.motor_data.command_mode == "position":
+			print(f"{'Target:':<20} {self.motor_data.target_position}")
+
+		elif self.motor_data.command_mode == "speed":
+			print(f"{'Target:':<20} {self.motor_data.target_speed}")
+
+		elif self.motor_data.command_mode == "torque":
+			print(f"{'Target:':<20} {self.motor_data.target_torque}")
+
+		print(f"{'Single Turn Position:':<20} {self.motor_data.singleturn_position}")
+		print(f"{'Multi Turn Position:':<20} {self.motor_data.multiturn_position}")
+		print(f"{'Speed:':<20} {self.motor_data.speed}")
+		print(f"{'Torque:':<20} {self.motor_data.torque}")
+		print(f"{'Temperature:':<20} {self.motor_data.temperature}")
+		print(f"{'Voltage:':<20} {self.motor_data.voltage}")
+		print(f"{'Error State:':<20} {self.motor_data.error_state}")
+		print(f"{'Last Update:':<20} {self.motor_data.last_update}")
 
 	# Called everytime a new message for this motor is recieved, filters according to msg type (first byte)
 	def process_message(self, msg):
