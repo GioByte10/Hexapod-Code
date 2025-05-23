@@ -2,6 +2,7 @@ from mailbox import Message
 
 import can
 import math
+import struct
 from .CanUtils import CanUtils, command_dict
 from .timeout import timeout
 import time
@@ -24,6 +25,7 @@ class MotorData:
 	target_speed: float = 0
 	acceleration: float = 0
 	torque: float = 0
+	target_torque: float = 0
 	temperature: float = 0
 	voltage: float = 0
 	error_state: str = ""
@@ -96,15 +98,15 @@ class CanMotor(object):
 		print(f"{'Control Mode:':<20} {self.motor_data.command_mode}")
 
 		if self.motor_data.command_mode == "position":
-			print(f"{'PID:':<20} {self.motor_data.pid_values[4:7]}")
+			# print(f"{'PID:':<20} {self.motor_data.pid_values[4:7]}")
 			print(f"{'Target:':<20} {self.motor_data.target_position}")
 
 		elif self.motor_data.command_mode == "speed":
-			print(f"{'PID:':<20} {self.motor_data.pid_values[2:4]}")
+			# print(f"{'PID:':<20} {self.motor_data.pid_values[2:4]}")
 			print(f"{'Target:':<20} {self.motor_data.target_speed}")
 
 		elif self.motor_data.command_mode == "torque":
-			print(f"{'PID:':<20} {self.motor_data.pid_values[0:2]}")
+			# print(f"{'PID:':<20} {self.motor_data.pid_values[0:2]}")
 			print(f"{'Target:':<20} {self.motor_data.target_torque}")
 
 		print(f"{'Single Turn Position:':<20} {self.motor_data.singleturn_position}")
@@ -181,22 +183,26 @@ class CanMotor(object):
 			self.motor_data.last_update = (hex(0x9C), msg.timestamp)
 
 		elif msg.data[0] == 0x30:	# Read PID values
+			print(msg)
+			for element in msg.data:
+				print(element)
+
 			index = msg.data[1]
 
-			if index >= 7:
-				index -= 2
-
-			elif index >= 4:
-				index -= 1
-
-			index -= 1
+			# if index >= 7:
+			# 	index -= 2
+			#
+			# elif index >= 4:
+			# 	index -= 1
+			#
+			# index -= 1
 
 			b1 = msg.data[4]
 			b2 = msg.data[5]
 			b3 = msg.data[6]
 			b4 = msg.data[7]
 
-			self.motor_data.pid_values[index] = (np.frombuffer(np.uint32((b4 << 24) | (b3 << 16) | (b2 << 8) | b1).tobytes(), dtype=np.float32)[0])
+			test = (np.frombuffer(np.uint32((b4 << 24) | (b3 << 16) | (b2 << 8) | b1).tobytes(), dtype=np.float32)[0])
 
 
 		elif msg.data[0] == 0x92: # Read multi-turn position
@@ -298,11 +304,10 @@ class CanMotor(object):
 		if self.motor_data.command_mode == "torque":
 			msg_data = [0x30, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 			self._single_send(msg_data)
-			time.sleep(delay)
 
-			msg_data = [0x30, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
-			self._single_send(msg_data)
-			time.sleep(delay)
+			# msg_data = [0x30, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+			# self._single_send(msg_data)
+			# time.sleep(delay)
 
 		elif self.motor_data.command_mode == "speed":
 			msg_data = [0x30, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
@@ -326,6 +331,21 @@ class CanMotor(object):
 			self._single_send(msg_data)
 			time.sleep(delay)
 
+		"____________________________________________________________"
+
+	def write_pid(self, index, value, save=False):
+		# Writes a PID gain (like KP or KI) to the motor.
+		# index: parameter ID (e.g., 0x01 for current_KP)
+		# value: float value to set (e.g., 0.0 to disable)
+		# save: False = temporary (RAM); True = save to ROM
+
+		cmd = 0x32 if save else 0x31
+		data = [cmd, index, 0x00, 0x00]
+		data += list(struct.pack('<f', value))  # convert float to bytes
+		print(data)
+		self._single_send(data)
+
+		"____________________________________________________________"
 
 	def motor_stop(self):
 		'''

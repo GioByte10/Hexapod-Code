@@ -24,26 +24,21 @@ if __name__ == "__main__":
     for motor in motors:
         motor.initialize_motor()
 
-    motor.write_pid(0x07, 1000.0)
-    motor.write_pid(0x07, 1)
-
     time.sleep(1)
     input("Continue")
 
     motor.initialize_control_command()
-    motor.set_control_mode("position", 1.0)
+
+
+
+    motor.set_control_mode("speed", 3)
     motor.control()
 
     try:
         while True:
             motor.read_status_once()
-            time.sleep(0.02)
             motor.read_multiturn_once()
-            time.sleep(0.02)
             motor.read_motor_state_once()
-            time.sleep(0.02)
-            #motor.read_pid_once()
-            time.sleep(0.02)
             motor.datadump()
 
             time.sleep(0.05)
