@@ -15,17 +15,18 @@ if __name__ == "__main__":
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
     # motor = CanMotor(can0, motor_id=7, gear_ratio=1) #m_A
-    motor = CanMotor(can0, motor_id=7, gear_ratio=1)   #m_D
+    motor = CanMotor(can0, motor_id=0, gear_ratio=1)   #m_D
     motors = [motor]
     motor_listener = MotorListener(motor_list=motors)
 
     notifier = can.Notifier(can0, [motor_listener])
 
+    motor.write_pid(0x07, 1000.0)
+    motor.write_pid(0x07, 1)
+
     for motor in motors:
         motor.initialize_motor()
 
-    motor.write_pid(0x07, 1000.0)
-    motor.write_pid(0x07, 1)
 
     time.sleep(1)
     input("Continue")
@@ -47,7 +48,7 @@ if __name__ == "__main__":
             motor.datadump()
 
             time.sleep(0.05)
-            pass
+            motor.control()
 
     except KeyboardInterrupt:
         motor.stop_all_tasks()

@@ -14,10 +14,9 @@ if __name__ == "__main__":
     core.CANHelper.init("can0")
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
-    m_A = CanMotor(can0, motor_id=7, gear_ratio=1)
     m_D = CanMotor(can0, motor_id=0, gear_ratio=1)
 
-    motors = [m_A, m_D]  # Fix: add m_A to list
+    motors = [m_D]  # Fix: add m_A to list
     motor_listener = MotorListener(motor_list=motors)
 
     notifier = can.Notifier(can0, [motor_listener])
@@ -29,28 +28,24 @@ if __name__ == "__main__":
     time.sleep(1)
     input("Continue")
 
-
-    m_A.read_status_once()
-    m_A.read_multiturn_once()
-    m_A.read_motor_state_once()
-    m_A.datadump()
-
     m_D.read_status_once()
     m_D.read_multiturn_once()
     m_D.read_motor_state_once()
     m_D.datadump()
 
     t = float(sys.argv[1])
-    m_A.set_control_mode("torque", -t)
     m_D.set_control_mode("torque", -t)
 
     try:
         while True:
-            m_A.control()
             m_D.control()
+            time.sleep(0.02)
             m_D.read_status_once()
+            time.sleep(0.02)
             m_D.read_multiturn_once()
+            time.sleep(0.02)
             m_D.read_motor_state_once()
+            time.sleep(0.02)
             m_D.datadump()
 
             time.sleep(0.07)
