@@ -1,6 +1,7 @@
 import math
 import sys
 import os
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from core.CanMotorNew import CanMotor
@@ -8,6 +9,7 @@ from core.MotorListener import MotorListener
 import core.CANHelper
 import can
 import time
+
 
 def end():
     for motor in motors:
@@ -18,6 +20,7 @@ def end():
     can0.shutdown()
     print("Exiting")
     exit(0)
+
 
 if __name__ == "__main__":
 
@@ -59,44 +62,64 @@ if __name__ == "__main__":
 
     # m_D.set_control_mode("torque", -t)
     # m_A.set_control_mode("torque", -t)
-    
+
     m_A.set_control_mode("speed", t)
     m_D.set_control_mode("speed", t)
+    print("forward")
 
     m_A.control()
     m_D.control()
 
+    time.sleep(2)
+
+    m_A.set_control_mode("speed", 0)
+    m_D.set_control_mode("speed", 0)
+    print("stop")
+
+    m_A.control()
+    m_D.control()
+    time.sleep(0.05)
+
+    m_A.set_control_mode("speed", -t)
+    m_D.set_control_mode("speed", -t)
+    print("reverse")
+
+    m_A.control()
+    m_D.control()
+
+    time.sleep(2)
+
     start_time = time.time()
 
     try:
-        while time.time() - start_time < s:
-            print("=============================m_D=============================")
-            m_D.read_status_once()
-            time.sleep(0.02)
-            m_D.read_multiturn_once()
-            time.sleep(0.02)
-            m_D.read_motor_state_once()
-            time.sleep(0.02)
-            m_D.datadump()
-            time.sleep(0.02)
+        # while True:
+        # #     print("=============================m_D=============================")
+        # #     m_D.read_status_once()
+        # #     time.sleep(0.02)
+        # #     m_D.read_multiturn_once()
+        # #     time.sleep(0.02)
+        # #     m_D.read_motor_state_once()
+        # #     time.sleep(0.02)
+        # #     m_D.datadump()
+        # #     time.sleep(0.02)
+        # #
+        #     m_D.control()
+        #     time.sleep(0.07)
+        # #
+        # #     print("=============================m_A=============================")
+        # #     m_A.read_status_once()
+        # #     time.sleep(0.02)
+        # #     m_A.read_multiturn_once()
+        # #     time.sleep(0.02)
+        # #     m_A.read_motor_state_once()
+        # #     time.sleep(0.02)
+        # #     m_A.datadump()
+        # #     time.sleep(0.02)
+        # #
+        #     m_A.control()
+        #     time.sleep(0.07)
 
-            m_D.control()
-
-            print("=============================m_A=============================")
-            m_A.read_status_once()
-            time.sleep(0.02)
-            m_A.read_multiturn_once()
-            time.sleep(0.02)
-            m_A.read_motor_state_once()
-            time.sleep(0.02)
-            m_A.datadump()
-            time.sleep(0.02)
-            
-            m_A.control()
-
-            time.sleep(0.07)
-            pass
         end()
 
     except KeyboardInterrupt:
-      end()
+        end()
