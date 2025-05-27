@@ -78,7 +78,7 @@ if __name__ == "__main__":
 
     m_A.control()
     m_D.control()
-    time.sleep(0.05)
+    time.sleep(0.01)
 
     m_A.set_control_mode("speed", -t)
     m_D.set_control_mode("speed", -t)

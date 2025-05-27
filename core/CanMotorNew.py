@@ -38,7 +38,7 @@ class MotorData:
 # Class used for motor control, each instance represents a motor
 class CanMotor(object):
 	def __init__(self, bus:ThreadSafeBus, motor_id, gear_ratio, MIN_POS = -999 * 2 * math.pi, MAX_POS = 999 * 2 * math.pi, motor_type = "screw",
-			  MAX_SPEED:float = (1890*2*math.pi)/60):
+			  MAX_SPEED:float = (1890*2*math.pi)/60, name="NO_NAME"):
 		"""Intializes motor object 
 		-
 		Args:
@@ -62,6 +62,7 @@ class CanMotor(object):
 		self.min_pos = MIN_POS
 		self.max_pos = MAX_POS
 		self.max_speed = MAX_SPEED
+		self.name = name
 
 		# Encoder value range depends on motor type
 		if motor_type == "joint":
@@ -95,6 +96,7 @@ class CanMotor(object):
 
 
 	def datadump(self):
+		print(f"==================================={self.name}===================================")
 		print(f"{'Control Mode:':<20} {self.motor_data.command_mode}")
 
 		if self.motor_data.command_mode == "position":
@@ -299,15 +301,14 @@ class CanMotor(object):
 		msg_data = [0x9A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 		self._single_send(msg_data)
 
-
 	def read_pid_once(self, delay = 0.02):
 		if self.motor_data.command_mode == "torque":
 			msg_data = [0x30, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 			self._single_send(msg_data)
+			time.sleep(0.02)
 
-			# msg_data = [0x30, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
-			# self._single_send(msg_data)
-			# time.sleep(delay)
+			msg_data = [0x30, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+			self._single_send(msg_data)
 
 		elif self.motor_data.command_mode == "speed":
 			msg_data = [0x30, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
@@ -316,7 +317,6 @@ class CanMotor(object):
 
 			msg_data = [0x30, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 			self._single_send(msg_data)
-			time.sleep(delay)
 
 		elif self.motor_data.command_mode == "position":
 			msg_data = [0x30, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
@@ -329,9 +329,6 @@ class CanMotor(object):
 
 			msg_data = [0x30, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 			self._single_send(msg_data)
-			time.sleep(delay)
-
-		"____________________________________________________________"
 
 	def write_pid(self, index, value, save=False):
 		# Writes a PID gain (like KP or KI) to the motor.
@@ -345,7 +342,20 @@ class CanMotor(object):
 		print(data)
 		self._single_send(data)
 
-		"____________________________________________________________"
+	def write_acceleration(self, index, value):
+
+		data = [0x43, index, 0x00, 0x00]
+		data += list(struct.pack('<I', value))  # convert float to bytes
+		print(data)
+		self._single_send(data)
+
+	def set_zero_offset(self):
+		data = [0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+		self._single_send(data)
+
+	def write_system_reset(self):
+		data = [0x76, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+		self._single_send(data)
 
 	def motor_stop(self):
 		'''
@@ -548,7 +558,7 @@ class CanMotor(object):
 			to_deg = 100 * self.utils.radToDeg(target_position) * self.gear_ratio
 
 			# limit speed, choosing safe value of 10 deg/s
-			max_speed =  10 * self.gear_ratio
+			max_speed =  self.max_speed * self.gear_ratio
 
 			# Convert to bytes
 			s_byte1, s_byte2 = self.utils.int_to_bytes(int(max_speed), 2)

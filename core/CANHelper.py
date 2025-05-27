@@ -9,5 +9,5 @@ def init(CANBUSID):
 #   os.system(f'sudo ip link set dev {CANBUSID} down')
 
 def cleanup(CANBUSID):
-  print(f"CANHelper.cleanup('{CANBUSID}') called — skipping interface shutdown for debugging.")
-  # os.system(f'sudo ip link set dev {CANBUSID} down')
+  # print(f"CANHelper.cleanup('{CANBUSID}') called — skipping interface shutdown for debugging.")
+  os.system(f'sudo ip link set dev {CANBUSID} down')
