@@ -17,8 +17,8 @@ if __name__ == "__main__":
     core.CANHelper.init("can0")
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
-    m_A = CanMotor(can0, MAX_SPEED=1000, motor_id=7, gear_ratio=1, name="A")  # m_A
-    m_D = CanMotor(can0, MAX_SPEED=1000, motor_id=0, gear_ratio=1, name="D")  # m_D
+    m_A = CanMotor(can0, MAX_SPEED=300, motor_id=7, gear_ratio=1, name="A")  # m_A
+    m_D = CanMotor(can0, MAX_SPEED=300, motor_id=0, gear_ratio=1, name="D")  # m_D
     motors = [m_A, m_D]
 
     motor_listener = MotorListener(motor_list=motors)
@@ -58,7 +58,13 @@ if __name__ == "__main__":
         # motor.control()
 
     t = 0
+    m_A.set_control_mode("position", a_positions[t])
+    m_D.set_control_mode("position", d_positions[t])
 
+    m_A.control()
+    m_D.control()
+
+    time.sleep(1)
     try:
         while True:
             # for motor in motors:
@@ -74,12 +80,10 @@ if __name__ == "__main__":
             #     time.sleep(0.02)
 
             m_A.set_control_mode("position", a_positions[t])
-            m_A.control()
-            time.sleep(0.01)
-
             m_D.set_control_mode("position", d_positions[t])
+            m_A.control()
             m_D.control()
-            time.sleep(0.01)
+            time.sleep(0.005)
 
             t += 1
 
