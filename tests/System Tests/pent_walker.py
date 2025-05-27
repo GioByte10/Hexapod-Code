@@ -23,6 +23,7 @@ def end():
     print("Exiting")
     exit(0)
 
+
 def load_cycle(filename):
     a = 0
 
@@ -127,7 +128,7 @@ if __name__ == "__main__":
                 t = 0
                 i += 1
 
-
+        end()
 
     except KeyboardInterrupt:
         end()
