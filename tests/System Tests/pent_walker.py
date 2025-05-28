@@ -39,7 +39,7 @@ def load_cycle(filename):
     print(d_positions)
 
     a_positions = a_positions + 5.68
-    d_positions = d_positions + 1.73
+    d_positions = d_positions + 1.73 - 2 * math.pi
     print(a_positions)
     print(d_positions)
 
@@ -94,10 +94,13 @@ if __name__ == "__main__":
     m_A.set_control_mode("position", a_positions[t])
     m_D.set_control_mode("position", d_positions[t])
 
+    print(a_positions[t])
+    print(d_positions[t])
+
     m_A.control()
     m_D.control()
 
-    time.sleep(1)
+    time.sleep(0.3)
 
     i = 0
 
@@ -110,7 +113,7 @@ if __name__ == "__main__":
             #     time.sleep(0.02)
             #     motor.read_motor_state_once()
             #     time.sleep(0.02)
-
+            #
             # for motor in motors:
             #     motor.datadump()
             #     time.sleep(0.02)
