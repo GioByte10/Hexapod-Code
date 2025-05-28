@@ -52,7 +52,7 @@ def load_cycle(filename):
     l = len(a_positions)
 
     if l != len(d_positions):
-        print("ERROR: qA and qD are not the same size")
+        print("ERROR: dqA and dqD are not the same size")
         exit(2)
 
     return a_positions, d_positions, a_velocities, d_velocities, l
@@ -61,7 +61,7 @@ def load_cycle(filename):
 if __name__ == "__main__":
 
     if len(sys.argv) >= 2:
-        filename = f'cycle_{sys.argv[1]}.mat'
+        filename = f'cycle_vel_{sys.argv[1]}.mat'
 
     else:
         print("ERROR: Filename not provided")
@@ -78,8 +78,8 @@ if __name__ == "__main__":
     core.CANHelper.init("can0")
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
-    m_A = CanMotor(can0, MAX_SPEED=300, motor_id=7, gear_ratio=1, name="A")  # m_A
-    m_D = CanMotor(can0, MAX_SPEED=300, motor_id=0, gear_ratio=1, name="D")  # m_D
+    m_A = CanMotor(can0, MAX_SPEED=400, motor_id=7, gear_ratio=1, name="A")  # m_A
+    m_D = CanMotor(can0, MAX_SPEED=400, motor_id=0, gear_ratio=1, name="D")  # m_D
     motors = [m_A, m_D]
 
     motor_listener = MotorListener(motor_list=motors)
@@ -87,15 +87,15 @@ if __name__ == "__main__":
     notifier = can.Notifier(can0, [motor_listener])
 
     for motor in motors:
-        motor.write_acceleration(0x00, np.uint32(60000))
-        motor.write_acceleration(0x01, np.uint32(60000))
+        motor.write_acceleration(0x02, np.uint32(60000))
+        motor.write_acceleration(0x03, np.uint32(60000))
 
         motor.initialize_motor()
         motor.initialize_control_command()
 
     time.sleep(1)
     input("Continue")
-
+    # Send motor to start position
     t = 0
     m_A.set_control_mode("position", a_positions[t])
     m_D.set_control_mode("position", d_positions[t])
@@ -105,9 +105,9 @@ if __name__ == "__main__":
 
     m_A.control()
     m_D.control()
-
+    # Hold start pose
     time.sleep(1)
-
+    # Start at initial velocity
     m_A.set_control_mode("speed", a_velocities[t])
     m_D.set_control_mode("speed", d_velocities[t])
     m_A.control()
@@ -119,9 +119,9 @@ if __name__ == "__main__":
 
     try:
         while it == 0 or i < it:
-            # for motor in motors:
-            #     motor.read_status_once()
-            #     time.sleep(0.02)
+            for motor in motors:
+                motor.read_status_once()
+                time.sleep(0.02)
             #     motor.read_multiturn_once()
             #     time.sleep(0.02)
             #     motor.read_motor_state_once()

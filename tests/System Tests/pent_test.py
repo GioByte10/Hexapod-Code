@@ -17,8 +17,9 @@ if __name__ == "__main__":
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
     # motor = CanMotor(can0, motor_id=7, gear_ratio=1) #m_A
-    motor = CanMotor(can0, MAX_SPEED=0, motor_id=0, gear_ratio=1)   #m_D
-    motors = [motor]
+    m_A = CanMotor(can0, MAX_SPEED=7, motor_id=0, gear_ratio=1)
+    m_D = CanMotor(can0, MAX_SPEED=0, motor_id=0, gear_ratio=1)
+    motors = [m_A, m_D]
     motor_listener = MotorListener(motor_list=motors)
 
     notifier = can.Notifier(can0, [motor_listener])
@@ -34,7 +35,6 @@ if __name__ == "__main__":
     # motor.write_pid(0x08, 1)
     # motor.write_pid(0x09, 1)
 
-    print(motor.max_speed)
 
     # motor.write_acceleration(0x00, np.uint32(0))
     # motor.write_acceleration(0x01, np.uint32(0))
@@ -45,18 +45,22 @@ if __name__ == "__main__":
     for motor in motors:
         motor.initialize_motor()
 
-
     time.sleep(1)
     input("Continue")
 
-    motor.initialize_control_command()
-    motor.set_control_mode("position", 3)
-    motor.control()
+    m_A.initialize_control_command()
+    m_A.set_control_mode("torque", 10)
+    m_A.control()
+
+    m_D.initialize_control_command()
+    m_D.set_control_mode("torque", 10)
+    m_D.control()
 
     t = 0
 
     try:
         while True:
+            pass
             # motor.read_status_once()
             # time.sleep(0.02)
             # motor.read_multiturn_once()
@@ -69,13 +73,12 @@ if __name__ == "__main__":
 
             # motor.set_control_mode("position", 3 + math.sin(t))
             # print(math.sin(t))
-            time.sleep(0.05)
-            motor.control()
-            t += 0.01
+
 
     except KeyboardInterrupt:
-        motor.stop_all_tasks()
-        motor.motor_off()
+        for motor in motors:
+            motor.stop_all_tasks()
+            motor.motor_off()
         notifier.stop()
         core.CANHelper.cleanup("can0")
         can0.shutdown()
