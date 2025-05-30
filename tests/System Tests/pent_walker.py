@@ -187,7 +187,7 @@ def position_control():
     m_A.control()
     m_D.control()
 
-    time.sleep(0.001)
+    time.sleep(0.005)
 
 
 def speed_control():
@@ -286,12 +286,7 @@ if __name__ == "__main__":
                 i += 1
 
             log()
-
             control()
-
-            if t == l - 1:
-                t = 0
-                i += 1
 
             t += 1
 

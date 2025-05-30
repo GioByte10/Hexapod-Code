@@ -15,8 +15,8 @@ import numpy as np
 import math
 import scipy.io
 
-A_OFFSET = 4.654 - 2 * math.pi
-D_OFFSET = 1.769
+A_OFFSET = 2.536
+D_OFFSET = 2.373
 RANGE = 10
 TOP_N = 3
 
@@ -62,10 +62,10 @@ def read_controller_inputs(device):
                     file_n -= event.value
 
                     if file_n < 1:
-                        file_n += 3
+                        file_n += 4
 
-                    elif file_n > 3:
-                        file_n -= 3
+                    elif file_n > 4:
+                        file_n -= 4
 
             elif event.code == ecodes.ABS_HAT0X:
                 with lock:
@@ -77,6 +77,7 @@ def read_controller_inputs(device):
 
                     elif control_index > len(control_indexes):
                         control_index -= len(control_indexes)
+
 
         elif event.type == ecodes.EV_KEY:
             key_event = categorize(event)
@@ -109,16 +110,17 @@ def end():
 
 def restart_motors():
     for motor in motors:
-        motor.stop_all_tasks()
-
         motor.write_acceleration(0x00, np.uint32(60000))
         motor.write_acceleration(0x01, np.uint32(60000))
 
-        motor.write_acceleration(0x02, np.uint32(100))
-        motor.write_acceleration(0x03, np.uint32(100))
+        motor.write_acceleration(0x02, np.uint32(60000))
+        motor.write_acceleration(0x03, np.uint32(60000))
 
         motor.initialize_motor()
         motor.initialize_control_command()
+
+    if debug:
+        datadump()
 
 
 def parse_arguments():
@@ -170,6 +172,7 @@ def set_initial_position(p_A, p_D):
 
     print(f'p_A = {p_A}')
     print(f'p_D = {p_D}')
+    print("Positioning...")
 
     while True:
         m_A.read_motor_state_once()
@@ -182,18 +185,16 @@ def set_initial_position(p_A, p_D):
         m_D.read_multiturn_once()
         time.sleep(0.02)
 
-        # print("trying")
-        # print(abs(m_A.motor_data.multiturn_position - p_A))
-        # print(abs(m_D.motor_data.multiturn_position - p_D))
-
         if (m_A.motor_data.speed == 0 and m_D.motor_data.speed == 0 and
                 abs(m_A.motor_data.multiturn_position - p_A) < 0.1  and
                 abs(m_D.motor_data.multiturn_position - p_D) < 0.1):
+            print("Positioned")
             break
 
 
 # noinspection PyUnresolvedReferences
 def load_cycle(file_n):
+    print(f"Using cycles/cycle_{file_n}.mat")
     mat_file = scipy.io.loadmat(f'cycles/cycle_{file_n}.mat')
 
     qA = mat_file['qA'][0]
@@ -246,12 +247,16 @@ def position_control():
     m_A.control()
     m_D.control()
 
+    time.sleep(0.005)
+
 
 def speed_control():
     m_A.set_control_mode("speed", dqA[t])
     m_D.set_control_mode("speed", dqD[t])
     m_A.control()
     m_D.control()
+
+    time.sleep(0.01)
 
 
 def shape_control():
@@ -343,8 +348,8 @@ if __name__ == "__main__":
     core.CANHelper.init("can0")
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
-    m_A = CanMotor(can0, MAX_SPEED=500, motor_id=7, gear_ratio=1, name="A")  # m_A
-    m_D = CanMotor(can0, MAX_SPEED=500, motor_id=0, gear_ratio=1, name="D")  # m_D
+    m_A = CanMotor(can0, MAX_SPEED=2000, motor_id=7, gear_ratio=1, name="A")  # m_A
+    m_D = CanMotor(can0, MAX_SPEED=2000, motor_id=0, gear_ratio=1, name="D")  # m_D
     motors = [m_A, m_D]
 
     motor_listener = MotorListener(motor_list=motors)
@@ -361,14 +366,11 @@ if __name__ == "__main__":
     t = 0
     i = 0
 
-    try:
-        while it == 0 or i < it:
-            t += 1
+    while it == 0 or i < it:
+        try:
 
             log()
-
             control()
-            time.sleep(0.01)
 
             if t == l - 1:
                 t = 0
@@ -402,11 +404,16 @@ if __name__ == "__main__":
                 with lock:
                     changed_control_mode = False
 
-        end()
+            t += 1
 
-    except (OSError, can.CanOperationError) as e:
-        print("No crashing allowed")
-        time.sleep(0.05)
+        except (OSError, can.CanOperationError) as e:
+            print(f"No crashing allowed {e}")
+            time.sleep(0.3)
+            m_A.clear_error_flag()
+            m_D.clear_error_flag()
+            time.sleep(1)
 
-    except KeyboardInterrupt:
-        end()
+        except KeyboardInterrupt:
+            end()
+
+    end()
