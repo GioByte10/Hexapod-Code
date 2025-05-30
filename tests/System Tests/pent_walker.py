@@ -33,7 +33,8 @@ def no_control():
 
 def end():
 
-    set_initial_position()
+    print("Ending...")
+    set_initial_position(A_OFFSET, D_OFFSET)
 
     for motor in motors:
         motor.stop_all_tasks()
@@ -96,25 +97,37 @@ def datadump():
         time.sleep(0.02)
 
 
-def set_initial_position():
-    m_A.set_control_mode("position", qA[0])
-    m_D.set_control_mode("position", qD[0])
+def set_initial_position(p_A, p_D):
+    m_A.set_control_mode("position", p_A)
+    m_D.set_control_mode("position", p_D)
 
     m_A.control()
     m_D.control()
 
     time.sleep(0.2)
 
-    print(f'qA[0] = {qA[0]}')
-    print(f'qD[0] = {qD[0]}')
+    print(f'p_A = {p_A}')
+    print(f'p_D = {p_D}')
+    print("Positioning...")
 
     while True:
         m_A.read_motor_state_once()
         time.sleep(0.02)
-        m_D.read_motor_state_once()
+        m_A.read_multiturn_once()
         time.sleep(0.02)
 
-        if m_A.motor_data.speed == 0 and m_D.motor_data.speed == 0:
+        m_D.read_motor_state_once()
+        time.sleep(0.02)
+        m_D.read_multiturn_once()
+        time.sleep(0.02)
+
+        # print(abs(m_A.motor_data.multiturn_position - p_A))
+        # print(abs(m_D.motor_data.multiturn_position - p_D))
+
+        if (m_A.motor_data.speed == 0 and m_D.motor_data.speed == 0 and
+                abs(m_A.motor_data.multiturn_position - p_A) < 0.1  and
+                abs(m_D.motor_data.multiturn_position - p_D) < 0.1):
+            print("Positioned")
             break
 
 
@@ -151,6 +164,19 @@ def load_cycle(filename):
         exit(2)
 
     return qA, qD, dqA, dqD, l
+
+
+def get_control_mode():
+    if control_mode == "position":
+        return position_control
+
+    elif control_mode == "speed":
+        return speed_control
+
+    elif control_mode == "shape":
+        return shape_control
+
+    return no_control()
 
 
 def position_control():
@@ -240,17 +266,8 @@ if __name__ == "__main__":
     time.sleep(1)
     input("Hey! I'm walking here!")
 
-    set_initial_position()
-    control = no_control
-
-    if control_mode == "position":
-        control = position_control
-
-    elif control_mode == "speed":
-        control = speed_control
-
-    elif control_mode == "shape":
-        control = shape_control
+    set_initial_position(qA[0], qD[0])
+    control = get_control_mode()
 
     t = 0
     i = 0
