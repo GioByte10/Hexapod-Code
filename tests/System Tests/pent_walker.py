@@ -12,8 +12,8 @@ import numpy as np
 import math
 import scipy.io
 
-A_OFFSET = 4.654 - 2 * math.pi
-D_OFFSET = 1.769
+A_OFFSET = 2.536
+D_OFFSET = 2.373
 RANGE = 10
 TOP_N = 3
 
@@ -32,7 +32,6 @@ def no_control():
 
 
 def end():
-
     print("Ending...")
     set_initial_position(A_OFFSET, D_OFFSET)
 
@@ -52,11 +51,14 @@ def restart_motors():
         motor.write_acceleration(0x00, np.uint32(60000))
         motor.write_acceleration(0x01, np.uint32(60000))
 
-        motor.write_acceleration(0x02, np.uint32(100))
-        motor.write_acceleration(0x03, np.uint32(100))
+        motor.write_acceleration(0x02, np.uint32(60000))
+        motor.write_acceleration(0x03, np.uint32(60000))
 
         motor.initialize_motor()
         motor.initialize_control_command()
+
+    if debug:
+        datadump()
 
 
 def parse_arguments():
@@ -185,12 +187,16 @@ def position_control():
     m_A.control()
     m_D.control()
 
+    time.sleep(0.001)
+
 
 def speed_control():
     m_A.set_control_mode("speed", dqA[t])
     m_D.set_control_mode("speed", dqD[t])
     m_A.control()
     m_D.control()
+
+    time.sleep(0.01)
 
 
 def shape_control():
@@ -254,8 +260,8 @@ if __name__ == "__main__":
     core.CANHelper.init("can0")
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
-    m_A = CanMotor(can0, MAX_SPEED=500, motor_id=7, gear_ratio=1, name="A")  # m_A
-    m_D = CanMotor(can0, MAX_SPEED=500, motor_id=0, gear_ratio=1, name="D")  # m_D
+    m_A = CanMotor(can0, MAX_SPEED=2000, motor_id=7, gear_ratio=1, name="A")  # m_A
+    m_D = CanMotor(can0, MAX_SPEED=2000, motor_id=0, gear_ratio=1, name="D")  # m_D
     motors = [m_A, m_D]
 
     motor_listener = MotorListener(motor_list=motors)
@@ -272,24 +278,31 @@ if __name__ == "__main__":
     t = 0
     i = 0
 
-    try:
-        while it == 0 or i < it:
-            t += 1
-
-            log()
-
-            control()
-            time.sleep(0.01)
+    while it == 0 or i < it:
+        try:
 
             if t == l - 1:
                 t = 0
                 i += 1
 
-        end()
+            log()
 
-    except (OSError, can.CanOperationError) as e:
-        print("No crashing allowed")
-        time.sleep(0.05)
+            control()
 
-    except KeyboardInterrupt:
-        end()
+            if t == l - 1:
+                t = 0
+                i += 1
+
+            t += 1
+
+        except (OSError, can.CanOperationError) as e:
+            print(f"No crashing allowed {e}")
+            time.sleep(0.3)
+            m_A.clear_error_flag()
+            m_D.clear_error_flag()
+            time.sleep(1)
+
+        except KeyboardInterrupt:
+            end()
+
+    end()

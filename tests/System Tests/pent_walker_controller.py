@@ -93,7 +93,7 @@ def no_control():
 
 
 def end():
-
+    print("Ending")
     set_initial_position(A_OFFSET, D_OFFSET)
 
     for motor in motors:
@@ -109,6 +109,8 @@ def end():
 
 def restart_motors():
     for motor in motors:
+        motor.stop_all_tasks()
+
         motor.write_acceleration(0x00, np.uint32(60000))
         motor.write_acceleration(0x01, np.uint32(60000))
 
@@ -180,9 +182,9 @@ def set_initial_position(p_A, p_D):
         m_D.read_multiturn_once()
         time.sleep(0.02)
 
-        print("trying")
-        print(abs(m_A.motor_data.multiturn_position - p_A))
-        print(abs(m_D.motor_data.multiturn_position - p_D))
+        # print("trying")
+        # print(abs(m_A.motor_data.multiturn_position - p_A))
+        # print(abs(m_D.motor_data.multiturn_position - p_D))
 
         if (m_A.motor_data.speed == 0 and m_D.motor_data.speed == 0 and
                 abs(m_A.motor_data.multiturn_position - p_A) < 0.1  and
@@ -373,28 +375,32 @@ if __name__ == "__main__":
                 i += 1
 
             if restart:
+                print("Restarting...")
                 restart_motors()
-                set_initial_position()
+                set_initial_position(qA[0], qD[0])
 
                 t = 0
+                with lock:
+                    restart = False
 
             if changed_file_n:
-                with lock:
-                    load_cycle(file_n)
-                    restart_motors()
-                    set_initial_position()
+                print("Changing .mat file...")
+                load_cycle(file_n)
+                set_initial_position(qA[0], qD[0])
 
-                    t = 0
-                    changed_file_n = True
+                t = 0
+                with lock:
+                    changed_file_n = False
 
             if changed_control_mode:
-                with lock:
-                    restart_motors()
-                    set_initial_position()
-                    control = get_control_mode()
+                print("Changing control mode...")
+                restart_motors()
+                set_initial_position(qA[0], qD[0])
+                control = get_control_mode()
 
-                    t = 0
-                    changed_control_mode = True
+                t = 0
+                with lock:
+                    changed_control_mode = False
 
         end()
 

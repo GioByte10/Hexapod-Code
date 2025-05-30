@@ -4,10 +4,8 @@ def init(CANBUSID):
   os.system(f'sudo ip link set dev {CANBUSID} down')
   os.system(f'sudo ip link set {CANBUSID} type can bitrate 1000000')
   os.system(f'sudo ip link set dev {CANBUSID} up')
-
-# def cleanup(CANBUSID):
-#   os.system(f'sudo ip link set dev {CANBUSID} down')
+  os.system(f'sudo ip link set {CANBUSID} txqueuelen 1000')
 
 def cleanup(CANBUSID):
-  # print(f"CANHelper.cleanup('{CANBUSID}') called — skipping interface shutdown for debugging.")
   os.system(f'sudo ip link set dev {CANBUSID} down')
+

@@ -23,6 +23,7 @@ def read_controller_inputs(device):
         print(f"Raw event: {event}")  # 🔍 See what events actually come i
         key_event = categorize(event)
         if event.type == ecodes.ABS_HAT0Y:
+            print("CROSS")
 
         if event.type == ecodes.EV_KEY:
             key_event = categorize(event)

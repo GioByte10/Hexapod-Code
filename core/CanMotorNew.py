@@ -33,7 +33,7 @@ class MotorData:
 	PI_values: Tuple[int, int, int, int, int, int, int] = (0, 0, 0, 0, 0, 0, 0) # Kp_torque, Ki_torque, Kp_speed, Ki_speed, Kp_pos, Ki_pos, kd_pos
 	last_update: Tuple[int, float] = (0, 0) # (msg_type, timestamp). Could change this so each parameter has its own last update time
 	command_mode: str = "" # This can be position, speed, (in theory torque one day)
-	# Should we use timestamp from CAN message our our own timing, i.e. time.time() - self.wakeup_time?
+	# Should we use timestamp from CAN message our own timing, i.e. time.time() - self.wakeup_time?
 	
 # Class used for motor control, each instance represents a motor
 class CanMotor(object):
@@ -265,6 +265,7 @@ class CanMotor(object):
 		for task in self.active_tasks:
 			task.stop()
 		self.active_tasks.clear()
+		self.motor_control_task = None
 
 	# def safe_send(self, bus, msg, retries=10, delay=0.01):
 	# 	for _ in range(retries):
@@ -284,7 +285,7 @@ class CanMotor(object):
 			data (byte list): data to send
 		'''
 		msg = can.Message(arbitration_id=self.id, data=data, is_extended_id=False, is_rx=False)
-		self.canBus.send(msg)
+		self.canBus.send(msg, timeout=0.02)
 
 	### Single send commands
 	def clear_error_flag(self):
