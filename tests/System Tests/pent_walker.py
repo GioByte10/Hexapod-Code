@@ -1,8 +1,6 @@
 import sys
 import os
 
-from orca.punctuation_settings import infinity
-
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from core.CanMotorNew import CanMotor
@@ -25,18 +23,17 @@ control_modes = {
     "s": "shape"
 }
 
-def no_function():
+def noop(*args, **kwargs):
+    pass
+
+
+def no_control():
     print("No control mode")
 
 
 def end():
-    m_A.set_control_mode("position", A_OFFSET)
-    m_D.set_control_mode("position", D_OFFSET)
 
-    m_A.control()
-    m_D.control()
-
-    time.sleep(4)
+    set_initial_position()
 
     for motor in motors:
         motor.stop_all_tasks()
@@ -49,6 +46,79 @@ def end():
     exit(0)
 
 
+def restart_motors():
+    for motor in motors:
+        motor.write_acceleration(0x00, np.uint32(60000))
+        motor.write_acceleration(0x01, np.uint32(60000))
+
+        motor.write_acceleration(0x02, np.uint32(100))
+        motor.write_acceleration(0x03, np.uint32(100))
+
+        motor.initialize_motor()
+        motor.initialize_control_command()
+
+
+def parse_arguments():
+    debug = False
+    it = 0
+
+    if len(sys.argv) >= 3:
+        filename = f'cycle_{sys.argv[1]}.mat'
+        control_mode = control_modes[sys.argv[2]]
+
+    else:
+        print("ERROR: Filename or control mode not provided")
+        exit(1)
+
+    if len(sys.argv) >= 4:
+        debug = "debug" in sys.argv
+
+        for i in range(3, len(sys.argv)):
+            try:
+                it = int(sys.argv[i])
+            except ValueError:
+                it = 0
+
+    return filename, control_mode, debug, it
+
+
+def datadump():
+    for motor in motors:
+        motor.read_status_once()
+        time.sleep(0.02)
+        motor.read_multiturn_once()
+        time.sleep(0.02)
+        motor.read_motor_state_once()
+        time.sleep(0.02)
+
+    for motor in motors:
+        motor.datadump()
+        time.sleep(0.02)
+
+
+def set_initial_position():
+    m_A.set_control_mode("position", qA[0])
+    m_D.set_control_mode("position", qD[0])
+
+    m_A.control()
+    m_D.control()
+
+    time.sleep(0.2)
+
+    print(f'qA[0] = {qA[0]}')
+    print(f'qD[0] = {qD[0]}')
+
+    while True:
+        m_A.read_motor_state_once()
+        time.sleep(0.02)
+        m_D.read_motor_state_once()
+        time.sleep(0.02)
+
+        if m_A.motor_data.speed == 0 and m_D.motor_data.speed == 0:
+            break
+
+
+# noinspection PyUnresolvedReferences
 def load_cycle(filename):
     mat_file = scipy.io.loadmat(f'cycles/{filename}')
 
@@ -66,6 +136,7 @@ def load_cycle(filename):
 
     qA = qA + A_OFFSET
     qD = qD + D_OFFSET
+
     print(qA)
     print(qD)
 
@@ -81,6 +152,7 @@ def load_cycle(filename):
 
     return qA, qD, dqA, dqD, l
 
+
 def position_control():
     m_A.set_control_mode(control_mode, qA[t])
     m_D.set_control_mode(control_mode, qD[t])
@@ -93,6 +165,7 @@ def speed_control():
     m_D.set_control_mode(control_mode, dqD[t])
     m_A.control()
     m_D.control()
+
 
 def shape_control():
     global t
@@ -147,22 +220,10 @@ def shape_control():
 
 if __name__ == "__main__":
 
-    if len(sys.argv) >= 3:
-        filename = f'cycle_{sys.argv[1]}.mat'
-        control_mode = control_modes[sys.argv[2]]
-        print(control_mode)
-
-    else:
-        print("ERROR: Filename or control mode not provided")
-        exit(1)
-
-    if len(sys.argv) >= 4:
-        it = int(sys.argv[2])
-
-    else:
-        it = 0
-
+    filename, control_mode, debug, it = parse_arguments()
     qA, qD, dqA, dqD, l = load_cycle(filename)
+
+    log = datadump if debug else noop
 
     core.CANHelper.init("can0")
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
@@ -174,62 +235,32 @@ if __name__ == "__main__":
     motor_listener = MotorListener(motor_list=motors)
     notifier = can.Notifier(can0, [motor_listener])
 
-    for motor in motors:
-        motor.write_acceleration(0x00, np.uint32(60000))
-        motor.write_acceleration(0x01, np.uint32(60000))
-
-        motor.write_acceleration(0x02, np.uint32(100))
-        motor.write_acceleration(0x03, np.uint32(100))
-
-        motor.initialize_motor()
-        motor.initialize_control_command()
+    restart_motors()
 
     time.sleep(1)
-    input("Continue")
+    input("Hey! I'm walking here!")
 
-    m_A.set_control_mode("position", qA[0])
-    m_D.set_control_mode("position", qD[0])
-
-    print(qA[0])
-    print(qD[0])
-
-    m_A.control()
-    m_D.control()
-
-    time.sleep(5)
-
-    t = 0
-    i = 0
-
-    motionA = qA if control_mode == "position" else dqA
-    motionD = qD if control_mode == "position" else dqD
-
-    control = no_function
+    set_initial_position()
+    control = no_control
 
     if control_mode == "position":
         control = position_control
 
-    if control_mode == "speed":
+    elif control_mode == "speed":
         control = speed_control
 
-    if control_mode == "shape":
+    elif control_mode == "shape":
         control = shape_control
+
+    t = 0
+    i = 0
 
     try:
         while it == 0 or i < it:
-            # for motor in motors:
-            #     motor.read_status_once()
-            #     time.sleep(0.02)
-            #     motor.read_multiturn_once()
-            #     time.sleep(0.02)
-            #     motor.read_motor_state_once()
-            #     time.sleep(0.02)
-            #
-            # for motor in motors:
-            #     motor.datadump()
-            #     time.sleep(0.02)
-
             t += 1
+
+            log()
+
             control()
             time.sleep(0.01)
 
@@ -238,6 +269,10 @@ if __name__ == "__main__":
                 i += 1
 
         end()
+
+    except (OSError, can.CanOperationError) as e:
+        print("No crashing allowed")
+        time.sleep(0.05)
 
     except KeyboardInterrupt:
         end()
