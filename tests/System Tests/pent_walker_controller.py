@@ -1,5 +1,8 @@
 import sys
 import os
+import threading
+import time
+from evdev import InputDevice, categorize, ecodes, list_devices
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
@@ -17,11 +20,69 @@ D_OFFSET = 1.769
 RANGE = 10
 TOP_N = 3
 
-control_modes = {
-    "p": "position",
-    "v": "speed",
-    "s": "shape"
+changed_file_n = False
+changed_control_mode = False
+restart = False
+
+lock = threading.Lock()
+
+control_indexes = {
+    "p": 1,
+    "v": 2,
+    "s": 3
 }
+
+control_modes = {
+    1: "position",
+    2: "speed",
+    3: "shape"
+}
+
+def find_controller():
+    devices = [InputDevice(path) for path in list_devices()]
+    for device in devices:
+        print(f"Found: {device.name} at {device.path}")
+        if 'Xbox' in device.name or 'xbox' in device.name:
+            print("Using:", device.path)
+            return device
+
+    print("ERROR: Controller not connected")
+    exit(3)
+
+
+def read_controller_inputs(device):
+    global file_n, changed_file_n, control_index, changed_control_mode, restart
+
+    for event in device.read_loop():
+        if event.type == ecodes.EV_ABS and event.value:
+
+            if event.code == ecodes.ABS_HAT0Y:
+                with lock:
+                    changed_file_n = True
+                    file_n -= event.value
+
+                    if file_n < 1:
+                        file_n += 3
+
+                    elif file_n > 3:
+                        file_n -= 3
+
+            elif event.code == ecodes.ABS_HAT0X:
+                with lock:
+                    changed_control_mode = True
+                    control_index += event.value
+
+                    if control_index < 1:
+                        control_index += len(control_indexes)
+
+                    elif control_index > len(control_indexes):
+                        control_index -= len(control_indexes)
+
+        elif event.type == ecodes.EV_KEY:
+            key_event = categorize(event)
+            if key_event.keystate == key_event.key_down and 'BTN_Y' in key_event.keycode:
+                with lock:
+                    restart = True
 
 def noop(*args, **kwargs):
     pass
@@ -63,8 +124,8 @@ def parse_arguments():
     it = 0
 
     if len(sys.argv) >= 3:
-        filename = f'cycle_{sys.argv[1]}.mat'
-        control_mode = control_modes[sys.argv[2]]
+        file_n = int(sys.argv[1])
+        control_index = control_indexes[sys.argv[2]]
 
     else:
         print("ERROR: Filename or control mode not provided")
@@ -79,7 +140,7 @@ def parse_arguments():
             except ValueError:
                 it = 0
 
-    return filename, control_mode, debug, it
+    return file_n, control_index, debug, it
 
 
 def datadump():
@@ -119,8 +180,8 @@ def set_initial_position():
 
 
 # noinspection PyUnresolvedReferences
-def load_cycle(filename):
-    mat_file = scipy.io.loadmat(f'cycles/{filename}')
+def load_cycle(file_n):
+    mat_file = scipy.io.loadmat(f'cycles/cycle_{file_n}.mat')
 
     qA = mat_file['qA'][0]
     qD = mat_file['qD'][0]
@@ -151,6 +212,19 @@ def load_cycle(filename):
         exit(2)
 
     return qA, qD, dqA, dqD, l
+
+
+def get_control_mode():
+    if control_modes[control_index] == "position":
+        return position_control
+
+    elif control_modes[control_index] == "speed":
+        return speed_control
+
+    elif control_modes[control_index] == "shape":
+        return shape_control
+
+    return no_control()
 
 
 def position_control():
@@ -218,12 +292,40 @@ def shape_control():
     m_D.control()
 
 
+def fake_main():
+    global changed_control_mode, changed_file_n, restart
+    while True:
+        print(f"File_n is {file_n}")
+        print(f"Control is {control_modes[control_index]}")
+        time.sleep(0.5)
+
+        if changed_file_n:
+            print("___________________________FILE_N")
+            with lock:
+                changed_file_n = False
+
+        if changed_control_mode:
+            print("____________________________CONTROL")
+            with lock:
+                changed_control_mode = False
+
+        if restart:
+            print("restart")
+            restart = False
+
+
 if __name__ == "__main__":
 
-    filename, control_mode, debug, it = parse_arguments()
-    qA, qD, dqA, dqD, l = load_cycle(filename)
+    file_n, control_index, debug, it = parse_arguments()
+    qA, qD, dqA, dqD, l = load_cycle(file_n)
 
     log = datadump if debug else noop
+
+    controller = find_controller()
+    controller_thread = threading.Thread(target=read_controller_inputs, args=(controller,), daemon=True)
+    controller_thread.start()
+
+    # fake_main()
 
     core.CANHelper.init("can0")
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
@@ -241,16 +343,7 @@ if __name__ == "__main__":
     input("Hey! I'm walking here!")
 
     set_initial_position()
-    control = no_control
-
-    if control_mode == "position":
-        control = position_control
-
-    elif control_mode == "speed":
-        control = speed_control
-
-    elif control_mode == "shape":
-        control = shape_control
+    control = get_control_mode()
 
     t = 0
     i = 0
@@ -267,6 +360,30 @@ if __name__ == "__main__":
             if t == l - 1:
                 t = 0
                 i += 1
+
+            if restart:
+                restart_motors()
+                set_initial_position()
+
+                t = 0
+
+            if changed_file_n:
+                with lock:
+                    load_cycle(file_n)
+                    restart_motors()
+                    set_initial_position()
+
+                    t = 0
+                    changed_file_n = True
+
+            if changed_control_mode:
+                with lock:
+                    restart_motors()
+                    set_initial_position()
+                    control = get_control_mode()
+
+                    t = 0
+                    changed_control_mode = True
 
         end()
 
