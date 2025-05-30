@@ -17,8 +17,8 @@ if __name__ == "__main__":
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
     # motor = CanMotor(can0, motor_id=7, gear_ratio=1) #m_A
-    m_A = CanMotor(can0, MAX_SPEED=7, motor_id=0, gear_ratio=1)
-    m_D = CanMotor(can0, MAX_SPEED=0, motor_id=0, gear_ratio=1)
+    m_A = CanMotor(can0, motor_id=7, gear_ratio=1)
+    m_D = CanMotor(can0, motor_id=0, gear_ratio=1)
     motors = [m_A, m_D]
     motor_listener = MotorListener(motor_list=motors)
 
@@ -49,11 +49,11 @@ if __name__ == "__main__":
     input("Continue")
 
     m_A.initialize_control_command()
-    m_A.set_control_mode("torque", 10)
+    m_A.set_control_mode("speed", 5)
     m_A.control()
 
     m_D.initialize_control_command()
-    m_D.set_control_mode("torque", 10)
+    m_D.set_control_mode("speed", 7)
     m_D.control()
 
     t = 0

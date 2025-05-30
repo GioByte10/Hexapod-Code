@@ -96,7 +96,7 @@ class CanMotor(object):
 
 
 	def datadump(self):
-		print(f"==================================={self.name}===================================")
+		print(f"=================================== {self.name} ===================================")
 		print(f"{'Control Mode:':<20} {self.motor_data.command_mode}")
 
 		if self.motor_data.command_mode == "position":

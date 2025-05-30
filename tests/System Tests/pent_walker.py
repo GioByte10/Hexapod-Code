@@ -33,17 +33,18 @@ def load_cycle(filename):
     print(a_positions)
     print(d_positions)
 
-    a_positions = -a_positions
-    d_positions = -d_positions
+    a_positions = -a_positions * 5
+    d_positions = -d_positions * 5
     print(a_positions)
     print(d_positions)
 
-    a_positions = a_positions + 5.68
-    d_positions = d_positions + 1.73 - 2 * math.pi
+    a_positions = a_positions + 4.654 - 2 * math.pi
+    d_positions = d_positions + 1.769
     print(a_positions)
     print(d_positions)
 
     l = len(a_positions)
+    print(l)
 
     if l != len(d_positions):
         print("ERROR: qA and qD are not the same size")
@@ -72,8 +73,8 @@ if __name__ == "__main__":
     core.CANHelper.init("can0")
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
-    m_A = CanMotor(can0, MAX_SPEED=300, motor_id=7, gear_ratio=1, name="A")  # m_A
-    m_D = CanMotor(can0, MAX_SPEED=300, motor_id=0, gear_ratio=1, name="D")  # m_D
+    m_A = CanMotor(can0, MAX_SPEED=600, motor_id=7, gear_ratio=1, name="A")  # m_A
+    m_D = CanMotor(can0, MAX_SPEED=600, motor_id=0, gear_ratio=1, name="D")  # m_D
     motors = [m_A, m_D]
 
     motor_listener = MotorListener(motor_list=motors)
