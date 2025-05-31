@@ -46,8 +46,8 @@ def find_controller():
             print("Using:", device.path)
             return device
 
-    print("ERROR: Controller not connected")
-    exit(3)
+    print("Controllerless setup")
+    return None
 
 
 def read_controller_inputs(device):
@@ -174,9 +174,10 @@ def set_initial_position(p_A, p_D):
 
     time.sleep(0.2)
 
+    print()
+    print("Positioning...")
     print(f'p_A = {p_A}')
     print(f'p_D = {p_D}')
-    print("Positioning...")
 
     while True:
         m_A.read_motor_state_once()
@@ -199,12 +200,12 @@ def set_initial_position(p_A, p_D):
                 abs(m_A.motor_data.multiturn_position - p_A) < 0.1  and
                 abs(m_D.motor_data.multiturn_position - p_D) < 0.1):
             print("Positioned")
+            print()
             break
 
 
 # noinspection PyUnresolvedReferences
 def load_cycle(file_n):
-    print(f"Using cycles/cycle_{file_n}.mat")
     mat_file = scipy.io.loadmat(f'cycles/cycle_{file_n}.mat')
 
     qA = mat_file['qA'][0]
@@ -229,7 +230,9 @@ def load_cycle(file_n):
     dqD = -dqD * 5
 
     l = len(qA)
-    print(l)
+    print()
+    print(f"Using cycles/cycle_{file_n}.mat")
+    print(f"Path contains {l} points")
 
     if l != len(qD):
         print("ERROR: qA and qD are not the same size")
@@ -354,10 +357,10 @@ if __name__ == "__main__":
     log = datadump if debug else noop
 
     controller = find_controller()
-    controller_thread = threading.Thread(target=read_controller_inputs, args=(controller,), daemon=True)
-    controller_thread.start()
 
-    # fake_main()
+    if controller is not None:
+        controller_thread = threading.Thread(target=read_controller_inputs, args=(controller,), daemon=True)
+        controller_thread.start()
 
     core.CANHelper.init("can0")
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
@@ -372,6 +375,7 @@ if __name__ == "__main__":
     restart_motors()
 
     time.sleep(1)
+    print()
     input("Hey! I'm walking here!")
 
     set_initial_position(qA[0], qD[0])
