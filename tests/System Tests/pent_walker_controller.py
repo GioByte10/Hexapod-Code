@@ -85,6 +85,7 @@ def read_controller_inputs(device):
                 with lock:
                     restart = True
 
+
 def noop(*args, **kwargs):
     pass
 
@@ -166,7 +167,10 @@ def set_initial_position(p_A, p_D):
     m_D.set_control_mode("position", p_D)
 
     m_A.control()
+    time.sleep(0.02)
+
     m_D.control()
+    time.sleep(0.02)
 
     time.sleep(0.2)
 
@@ -183,6 +187,12 @@ def set_initial_position(p_A, p_D):
         m_D.read_motor_state_once()
         time.sleep(0.02)
         m_D.read_multiturn_once()
+        time.sleep(0.02)
+
+        m_A.control()
+        time.sleep(0.02)
+
+        m_D.control()
         time.sleep(0.02)
 
         if (m_A.motor_data.speed == 0 and m_D.motor_data.speed == 0 and
@@ -244,19 +254,23 @@ def get_control_mode():
 def position_control():
     m_A.set_control_mode("position", qA[t])
     m_D.set_control_mode("position", qD[t])
-    m_A.control()
-    m_D.control()
 
+    m_A.control()
+    time.sleep(0.005)
+
+    m_D.control()
     time.sleep(0.005)
 
 
 def speed_control():
     m_A.set_control_mode("speed", dqA[t])
     m_D.set_control_mode("speed", dqD[t])
-    m_A.control()
-    m_D.control()
 
-    time.sleep(0.01)
+    m_A.control()
+    time.sleep(0.005)
+
+    m_D.control()
+    time.sleep(0.005)
 
 
 def shape_control():
@@ -378,7 +392,8 @@ if __name__ == "__main__":
 
             if restart:
                 print("Restarting...")
-                restart_motors()
+                set_initial_position(A_OFFSET, D_OFFSET)
+                time.sleep(1)
                 set_initial_position(qA[0], qD[0])
 
                 t = 0
@@ -387,7 +402,9 @@ if __name__ == "__main__":
 
             if changed_file_n:
                 print("Changing .mat file...")
-                load_cycle(file_n)
+                qA, qD, dqA, dqD, l = load_cycle(file_n)
+                set_initial_position(A_OFFSET, D_OFFSET)
+                time.sleep(1)
                 set_initial_position(qA[0], qD[0])
 
                 t = 0
@@ -396,7 +413,8 @@ if __name__ == "__main__":
 
             if changed_control_mode:
                 print("Changing control mode...")
-                restart_motors()
+                set_initial_position(A_OFFSET, D_OFFSET)
+                time.sleep(1)
                 set_initial_position(qA[0], qD[0])
                 control = get_control_mode()
 
