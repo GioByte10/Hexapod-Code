@@ -182,8 +182,8 @@ def get_control_mode():
 
 
 def position_control():
-    m_A.set_control_mode("position", qA[t])
-    m_D.set_control_mode("position", qD[t])
+    m_A.set_control_mode("position", qA[step])
+    m_D.set_control_mode("position", qD[step])
     m_A.control()
     m_D.control()
 
@@ -191,8 +191,8 @@ def position_control():
 
 
 def speed_control():
-    m_A.set_control_mode("speed", dqA[t])
-    m_D.set_control_mode("speed", dqD[t])
+    m_A.set_control_mode("speed", dqA[step])
+    m_D.set_control_mode("speed", dqD[step])
     m_A.control()
     m_D.control()
 
@@ -200,7 +200,7 @@ def speed_control():
 
 
 def shape_control():
-    global t
+    global step
 
     m_A.read_multiturn_once()
     current_positionA = m_A.motor_data.multiturn_position
@@ -275,20 +275,20 @@ if __name__ == "__main__":
     set_initial_position(qA[0], qD[0])
     control = get_control_mode()
 
-    t = 0
+    step = 0
     i = 0
 
     while it == 0 or i < it:
         try:
 
-            if t == l - 1:
-                t = 0
+            if step == l - 1:
+                step = 0
                 i += 1
 
             log()
             control()
 
-            t += 1
+            step += 1
 
         except (OSError, can.CanOperationError) as e:
             print(f"No crashing allowed {e}")

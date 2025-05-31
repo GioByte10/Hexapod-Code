@@ -52,7 +52,7 @@ if __name__ == "__main__":
     m_D.read_motor_state_once()
     m_D.datadump()
 
-    t = float(sys.argv[1])
+    step = float(sys.argv[1])
 
     if len(sys.argv) == 3:
         s = int(sys.argv[2])
@@ -63,8 +63,8 @@ if __name__ == "__main__":
     # m_D.set_control_mode("torque", -t)
     # m_A.set_control_mode("torque", -t)
 
-    m_A.set_control_mode("speed", t)
-    m_D.set_control_mode("speed", t)
+    m_A.set_control_mode("speed", step)
+    m_D.set_control_mode("speed", step)
     print("forward")
 
     m_A.control()
@@ -80,8 +80,8 @@ if __name__ == "__main__":
     m_D.control()
     time.sleep(0.01)
 
-    m_A.set_control_mode("speed", -t)
-    m_D.set_control_mode("speed", -t)
+    m_A.set_control_mode("speed", -step)
+    m_D.set_control_mode("speed", -step)
     print("reverse")
 
     m_A.control()

@@ -25,7 +25,7 @@ changed_control_mode = False
 restart = False
 paused = False
 
-lock = threading.Lock()
+thread_lock = threading.Lock()
 
 control_indexes = {
     "p": 1,
@@ -38,6 +38,24 @@ control_modes = {
     2: "speed",
     3: "shape"
 }
+
+def noop(*args, **kwargs):
+    pass
+
+
+def datadump():
+    for motor in motors:
+        motor.read_status_once()
+        time.sleep(0.02)
+        motor.read_multiturn_once()
+        time.sleep(0.02)
+        motor.read_motor_state_once()
+        time.sleep(0.02)
+
+    for motor in motors:
+        motor.datadump()
+        time.sleep(0.02)
+
 
 def find_controller():
     devices = [InputDevice(path) for path in list_devices()]
@@ -52,56 +70,59 @@ def find_controller():
 
 
 def read_controller_inputs(device):
-    global file_n, changed_file_n, control_index, changed_control_mode, restart, paused
+
+    def change_file_n():
+        global file_n, changed_file_n
+
+        with thread_lock:
+            changed_file_n = True
+            file_n -= event.value
+
+            if file_n < 1:
+                file_n += 4
+
+            elif file_n > 4:
+                file_n -= 4
+
+    def change_control_index():
+        global control_index, changed_control_mode
+
+        with thread_lock:
+            changed_control_mode = True
+            control_index += event.value
+
+            if control_index < 1:
+                control_index += len(control_indexes)
+
+            elif control_index > len(control_indexes):
+                control_index -= len(control_indexes)
+
+    global restart, paused
 
     for event in device.read_loop():
         if event.type == ecodes.EV_ABS and event.value:
 
             if event.code == ecodes.ABS_HAT0Y:
-                with lock:
-                    changed_file_n = True
-                    file_n -= event.value
-
-                    if file_n < 1:
-                        file_n += 4
-
-                    elif file_n > 4:
-                        file_n -= 4
+                change_file_n()
 
             elif event.code == ecodes.ABS_HAT0X:
-                with lock:
-                    changed_control_mode = True
-                    control_index += event.value
-
-                    if control_index < 1:
-                        control_index += len(control_indexes)
-
-                    elif control_index > len(control_indexes):
-                        control_index -= len(control_indexes)
+                change_control_index()
 
 
         elif event.type == ecodes.EV_KEY:
             key_event = categorize(event)
             if key_event.keystate == key_event.key_down:
                 if 'BTN_Y' in key_event.keycode:
-                    with lock:
+                    with thread_lock:
                         restart = True
 
                 elif 'BTN_A' in key_event.keycode:
-                    with lock:
+                    with thread_lock:
                         paused = not paused
 
                 elif 'BTN_B':
-                    with lock:
+                    with thread_lock:
                         end()
-
-
-def noop(*args, **kwargs):
-    pass
-
-
-def no_control():
-    print("No control mode")
 
 
 def graceful_end():
@@ -159,20 +180,6 @@ def parse_arguments():
                 it = 0
 
     return file_n, control_index, debug, it
-
-
-def datadump():
-    for motor in motors:
-        motor.read_status_once()
-        time.sleep(0.02)
-        motor.read_multiturn_once()
-        time.sleep(0.02)
-        motor.read_motor_state_once()
-        time.sleep(0.02)
-
-    for motor in motors:
-        motor.datadump()
-        time.sleep(0.02)
 
 
 def set_initial_position(p_A, p_D):
@@ -257,6 +264,84 @@ def load_cycle(file_n):
 
 
 def get_control_mode():
+
+    def no_control():
+        print("No control mode")
+
+
+    def position_control():
+        m_A.set_control_mode("position", qA[step])
+        m_D.set_control_mode("position", qD[step])
+
+        m_A.control()
+        time.sleep(0.005)
+
+        m_D.control()
+        time.sleep(0.005)
+
+
+    def speed_control():
+        m_A.set_control_mode("speed", dqA[step])
+        m_D.set_control_mode("speed", dqD[step])
+
+        m_A.control()
+        time.sleep(0.005)
+
+        m_D.control()
+        time.sleep(0.005)
+
+
+    def shape_control():
+        global step
+
+        m_A.read_multiturn_once()
+        current_positionA = m_A.motor_data.multiturn_position
+
+        start = step - int(RANGE / 2)
+        print(start)
+
+        distances = []
+        distances_indexes = []
+
+        for i in range(RANGE):
+            index = start + i
+
+            if index < 0:
+                index = path_length + index
+
+            elif index >= path_length:
+                index -= path_length
+
+            print(index)
+            print(abs(current_positionA - qA[index]))
+            distances.append(abs(current_positionA - qA[index]))
+            distances_indexes.append(index)
+
+        sorted_lists = sorted(zip(distances, distances_indexes))
+        distances, distances_indexes = zip(*sorted_lists)
+
+        closest = float('inf')
+        closest_index = 0
+
+        m_A.read_multiturn_once()
+        current_positionD = m_D.motor_data.multiturn_position
+
+        for i in range(TOP_N):
+            index = distances_indexes[i]
+
+            if abs(current_positionD - qD[index]) < closest:
+                closest_index = index
+
+        step = closest_index
+        print(f'This is t: {step}')
+
+        m_A.set_control_mode("speed", dqA[step])
+        m_D.set_control_mode("speed", dqD[step])
+
+        m_A.control()
+        m_D.control()
+
+
     if control_modes[control_index] == "position":
         return position_control
 
@@ -269,79 +354,6 @@ def get_control_mode():
     return no_control()
 
 
-def position_control():
-    m_A.set_control_mode("position", qA[t])
-    m_D.set_control_mode("position", qD[t])
-
-    m_A.control()
-    time.sleep(0.005)
-
-    m_D.control()
-    time.sleep(0.005)
-
-
-def speed_control():
-    m_A.set_control_mode("speed", dqA[t])
-    m_D.set_control_mode("speed", dqD[t])
-
-    m_A.control()
-    time.sleep(0.005)
-
-    m_D.control()
-    time.sleep(0.005)
-
-
-def shape_control():
-    global t
-
-    m_A.read_multiturn_once()
-    current_positionA = m_A.motor_data.multiturn_position
-
-    start = t - int(RANGE / 2)
-    print(start)
-
-    distances = []
-    distances_indexes = []
-
-    for i in range(RANGE):
-        index = start + i
-
-        if index < 0:
-            index = l + index
-
-        elif index >= l:
-            index -= l
-
-        print(index)
-        print(abs(current_positionA - qA[index]))
-        distances.append(abs(current_positionA - qA[index]))
-        distances_indexes.append(index)
-
-    sorted_lists = sorted(zip(distances, distances_indexes))
-    distances, distances_indexes = zip(*sorted_lists)
-
-    closest = float('inf')
-    closest_index = 0
-
-    m_A.read_multiturn_once()
-    current_positionD = m_D.motor_data.multiturn_position
-
-    for i in range(TOP_N):
-        index = distances_indexes[i]
-
-        if abs(current_positionD - qD[index]) < closest:
-            closest_index = index
-
-    t = closest_index
-    print(f'This is t: {t}')
-
-    m_A.set_control_mode("speed", dqA[t])
-    m_D.set_control_mode("speed", dqD[t])
-
-    m_A.control()
-    m_D.control()
-
-
 def fake_main():
     global changed_control_mode, changed_file_n, restart
     while True:
@@ -351,12 +363,12 @@ def fake_main():
 
         if changed_file_n:
             print("___________________________FILE_N")
-            with lock:
+            with thread_lock:
                 changed_file_n = False
 
         if changed_control_mode:
             print("____________________________CONTROL")
-            with lock:
+            with thread_lock:
                 changed_control_mode = False
 
         if restart:
@@ -364,10 +376,57 @@ def fake_main():
             restart = False
 
 
+def handle_restart():
+    global step, restart
+
+    print("Restarting...")
+    set_initial_position(A_OFFSET, D_OFFSET)
+    time.sleep(1)
+    set_initial_position(qA[0], qD[0])
+
+    step = 0
+    with thread_lock:
+        restart = False
+
+    print("Running path")
+
+
+def handle_changed_file():
+    global step, changed_file_n
+
+    print("Changing .mat file...")
+    qA, qD, dqA, dqD, path_length = load_cycle(file_n)
+    set_initial_position(A_OFFSET, D_OFFSET)
+    time.sleep(1)
+    set_initial_position(qA[0], qD[0])
+
+    step = 0
+    with thread_lock:
+        changed_file_n = False
+
+    print("Running path")
+
+
+def handle_changed_control_mode():
+    global step, control, changed_control_mode
+
+    print(f"Changing control mode to {control_modes[control_index]}")
+    set_initial_position(A_OFFSET, D_OFFSET)
+    time.sleep(1)
+    set_initial_position(qA[0], qD[0])
+    control = get_control_mode()
+
+    step = 0
+    with thread_lock:
+        changed_control_mode = False
+
+    print("Running path")
+
+
 if __name__ == "__main__":
 
-    file_n, control_index, debug, it = parse_arguments()
-    qA, qD, dqA, dqD, l = load_cycle(file_n)
+    file_n, control_index, debug, loop_target = parse_arguments()
+    qA, qD, dqA, dqD, path_length = load_cycle(file_n)
 
     log = datadump if debug else noop
 
@@ -402,63 +461,33 @@ if __name__ == "__main__":
 
     input()
 
-    t = 0
-    i = 0
+    step = 0
+    loop_count = 0
 
     print("Running path")
 
-    while it == 0 or i < it:
+    while loop_target == 0 or loop_count < loop_target:
         try:
-
             if paused:
                 continue
 
             log()
             control()
 
-            if t == l - 1:
-                t = 0
-                i += 1
+            if step == path_length - 1:
+                step = 0
+                loop_count += 1
 
             if restart:
-                print("Restarting...")
-                set_initial_position(A_OFFSET, D_OFFSET)
-                time.sleep(1)
-                set_initial_position(qA[0], qD[0])
-
-                t = 0
-                with lock:
-                    restart = False
-
-                print("Running path")
+                handle_restart()
 
             if changed_file_n:
-                print("Changing .mat file...")
-                qA, qD, dqA, dqD, l = load_cycle(file_n)
-                set_initial_position(A_OFFSET, D_OFFSET)
-                time.sleep(1)
-                set_initial_position(qA[0], qD[0])
-
-                t = 0
-                with lock:
-                    changed_file_n = False
-
-                print("Running path")
+                handle_changed_file()
 
             if changed_control_mode:
-                print(f"Changing control mode to {control_modes[control_index]}")
-                set_initial_position(A_OFFSET, D_OFFSET)
-                time.sleep(1)
-                set_initial_position(qA[0], qD[0])
-                control = get_control_mode()
+                handle_changed_control_mode()
 
-                t = 0
-                with lock:
-                    changed_control_mode = False
-
-                print("Running path")
-
-            t += 1
+            step += 1
 
         except (OSError, can.CanOperationError) as e:
             print(f"No crashing allowed {e}")

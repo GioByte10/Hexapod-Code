@@ -75,9 +75,9 @@ qD_list = [3.94014533314375,
                3.45366669928847,
                3.38982789443853,
                3.32782357833707]
-for t in range(0, 9):
-    m_dynamic.set_control_mode("position", qA_list[t]-offset_dynamic)
-    m_static.set_control_mode("position", -qD_list[t]+offset_static)
+for step in range(0, 9):
+    m_dynamic.set_control_mode("position", qA_list[step] - offset_dynamic)
+    m_static.set_control_mode("position", -qD_list[step] + offset_static)
     m_static.control()
     m_dynamic.control()
     try:

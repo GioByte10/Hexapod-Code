@@ -57,9 +57,9 @@ if __name__ == "__main__":
         # motor.set_control_mode("position", 3)
         # motor.control()
 
-    t = 0
-    m_A.set_control_mode("position", a_positions[t])
-    m_D.set_control_mode("position", d_positions[t])
+    step = 0
+    m_A.set_control_mode("position", a_positions[step])
+    m_D.set_control_mode("position", d_positions[step])
 
     m_A.control()
     m_D.control()
@@ -79,13 +79,13 @@ if __name__ == "__main__":
             #     motor.datadump()
             #     time.sleep(0.02)
 
-            m_A.set_control_mode("position", a_positions[t])
-            m_D.set_control_mode("position", d_positions[t])
+            m_A.set_control_mode("position", a_positions[step])
+            m_D.set_control_mode("position", d_positions[step])
             m_A.control()
             m_D.control()
             time.sleep(0.005)
 
-            t += 1
+            step += 1
 
 
     except KeyboardInterrupt:

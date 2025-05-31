@@ -56,7 +56,7 @@ if __name__ == "__main__":
     m_D.set_control_mode("speed", 7)
     m_D.control()
 
-    t = 0
+    step = 0
 
     try:
         while True:

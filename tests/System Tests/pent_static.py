@@ -33,8 +33,8 @@ if __name__ == "__main__":
     m_D.read_motor_state_once()
     m_D.datadump()
 
-    t = float(sys.argv[1])
-    m_D.set_control_mode("torque", -t)
+    step = float(sys.argv[1])
+    m_D.set_control_mode("torque", -step)
 
     try:
         while True:

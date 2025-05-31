@@ -16,13 +16,13 @@ if __name__ == "__main__":
   # testMotor.motor_stop()
   # time.sleep(2)
 
-  t = []
+  step = []
   y = []
   startTime = time.time()
   try:
     while True:
       ElapsedTime = time.time()-startTime
-      t.append(ElapsedTime)
+      step.append(ElapsedTime)
       y.append(testMotor.read_speed())  
       print(testMotor.read_speed())
       time.sleep(0.01)
@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
   print('Done')
 
-  plt.plot(t, y)
+  plt.plot(step, y)
   plt.ylabel('Speed (rad/s)')
   plt.xlabel('Time(s)')
   plt.show()

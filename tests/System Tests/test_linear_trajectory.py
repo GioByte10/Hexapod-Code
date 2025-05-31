@@ -157,7 +157,7 @@ if __name__ == "__main__":
         return multiturn_values
 
     log_data = np.array(log_data[1:])
-    t = log_data[:,0]
+    step = log_data[:, 0]
     s_pos = log_data[:,1] - joint1_zero_s_pos
     m_pos = log_data[:,2] - joint1_zero_pos
     diy_m_pos = log_data[:,3]
@@ -171,10 +171,10 @@ if __name__ == "__main__":
     plt.figure()
     plt.title("Position")
 
-    plt.plot(t, s_pos, marker='o', label = "Singleturn")
-    plt.plot(t, m_pos, label="Multiturn")
-    plt.plot(t, diy_m_pos, marker='x', label = "Ming's DIY Multiturn")
-    plt.plot(t, peter_diy_m_pos, label = "Peter's DIY Multiturn")
+    plt.plot(step, s_pos, marker='o', label ="Singleturn")
+    plt.plot(step, m_pos, label="Multiturn")
+    plt.plot(step, diy_m_pos, marker='x', label ="Ming's DIY Multiturn")
+    plt.plot(step, peter_diy_m_pos, label ="Peter's DIY Multiturn")
     plt.axhline(angle_to, label = "Set Angle")
     plt.legend()
     plt.tight_layout()
@@ -183,12 +183,12 @@ if __name__ == "__main__":
 
     plt.figure()
     plt.title("Builtin Multiturn")
-    plt.plot(t, m_pos, label="Multiturn")
+    plt.plot(step, m_pos, label="Multiturn")
     # plt.show()
 
     plt.figure()
     plt.title("Raw Encoder")
-    plt.plot(t, raw_encoder)
+    plt.plot(step, raw_encoder)
     plt.show()
     
     

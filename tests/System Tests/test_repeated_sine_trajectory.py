@@ -110,7 +110,7 @@ if __name__ == "__main__":
 
     # Plot sine waves on top of eachother
     log_data = np.array(log_data[1:])
-    t = log_data[:,0]
+    step = log_data[:, 0]
     s_pos = log_data[:,1]
     m_pos = log_data[:,2]
     speed = log_data[:,3]

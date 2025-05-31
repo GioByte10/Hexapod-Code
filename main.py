@@ -42,14 +42,14 @@ if __name__ == "__main__":
     utils = CanUtils()
     
     start = datetime.now()
-    t = []
+    step = []
     # y = []
     # z = []
 
     for i in range(200):
         try:
             time_since_start = datetime.now() - start
-            t.append(time_since_start.total_seconds())
+            step.append(time_since_start.total_seconds())
             
             to_vel = (math.pi**2) * math.sin(time_since_start.total_seconds() * 0.2 * math.pi)
             to_pos = (math.pi**2) * math.sin(time_since_start.total_seconds() * 0.2 * math.pi)

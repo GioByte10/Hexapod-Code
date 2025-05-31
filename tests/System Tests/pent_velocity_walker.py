@@ -96,20 +96,20 @@ if __name__ == "__main__":
     time.sleep(1)
     input("Continue")
     # Send motor to start position
-    t = 0
-    m_A.set_control_mode("position", a_positions[t])
-    m_D.set_control_mode("position", d_positions[t])
+    step = 0
+    m_A.set_control_mode("position", a_positions[step])
+    m_D.set_control_mode("position", d_positions[step])
 
-    print(a_positions[t])
-    print(d_positions[t])
+    print(a_positions[step])
+    print(d_positions[step])
 
     m_A.control()
     m_D.control()
     # Hold start pose
     time.sleep(1)
     # Start at initial velocity
-    m_A.set_control_mode("speed", a_velocities[t])
-    m_D.set_control_mode("speed", d_velocities[t])
+    m_A.set_control_mode("speed", a_velocities[step])
+    m_D.set_control_mode("speed", d_velocities[step])
     m_A.control()
     m_D.control()
 
@@ -131,17 +131,17 @@ if __name__ == "__main__":
             #     motor.datadump()
             #     time.sleep(0.02)
 
-            t += 1
+            step += 1
 
-            m_A.set_control_mode("speed", a_velocities[t])
-            m_D.set_control_mode("speed", d_velocities[t])
+            m_A.set_control_mode("speed", a_velocities[step])
+            m_D.set_control_mode("speed", d_velocities[step])
             m_A.control()
             m_D.control()
 
             time.sleep(0.01)
 
-            if t == l - 1:
-                t = 0
+            if step == l - 1:
+                step = 0
                 i += 1
 
         end()
