@@ -109,6 +109,7 @@ def graceful_end():
     set_initial_position(A_OFFSET, D_OFFSET)
     end()
 
+
 def end():
     for motor in motors:
         motor.stop_all_tasks()
@@ -230,8 +231,8 @@ def load_cycle(file_n):
     print(f"qA: {qA}")
     print(f"qD: {qD}")
 
-    qA = qA * 5
-    qD = qD * 5
+    qA = -qA * 5
+    qD = -qD * 5
 
     qA = qA + A_OFFSET
     qD = qD + D_OFFSET
