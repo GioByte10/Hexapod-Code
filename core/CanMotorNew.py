@@ -347,7 +347,7 @@ class CanMotor(object):
 
 		data = [0x43, index, 0x00, 0x00]
 		data += list(struct.pack('<I', value))  # convert float to bytes
-		print(data)
+		# print(data)
 		self._single_send(data)
 
 	def set_zero_offset(self):

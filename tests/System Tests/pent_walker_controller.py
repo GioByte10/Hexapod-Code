@@ -23,6 +23,7 @@ TOP_N = 3
 changed_file_n = False
 changed_control_mode = False
 restart = False
+paused = False
 
 lock = threading.Lock()
 
@@ -51,7 +52,7 @@ def find_controller():
 
 
 def read_controller_inputs(device):
-    global file_n, changed_file_n, control_index, changed_control_mode, restart
+    global file_n, changed_file_n, control_index, changed_control_mode, restart, paused
 
     for event in device.read_loop():
         if event.type == ecodes.EV_ABS and event.value:
@@ -81,9 +82,18 @@ def read_controller_inputs(device):
 
         elif event.type == ecodes.EV_KEY:
             key_event = categorize(event)
-            if key_event.keystate == key_event.key_down and 'BTN_Y' in key_event.keycode:
-                with lock:
-                    restart = True
+            if key_event.keystate == key_event.key_down:
+                if 'BTN_Y' in key_event.keycode:
+                    with lock:
+                        restart = True
+
+                elif 'BTN_A' in key_event.keycode:
+                    with lock:
+                        paused = not paused
+
+                elif 'BTN_B':
+                    with lock:
+                        end()
 
 
 def noop(*args, **kwargs):
@@ -94,10 +104,12 @@ def no_control():
     print("No control mode")
 
 
-def end():
+def graceful_end():
     print("Ending")
     set_initial_position(A_OFFSET, D_OFFSET)
+    end()
 
+def end():
     for motor in motors:
         motor.stop_all_tasks()
         motor.motor_off()
@@ -214,17 +226,19 @@ def load_cycle(file_n):
     dqA = mat_file['dqA'][0]
     dqD = mat_file['dqD'][0]
 
-    print(qA)
-    print(qD)
+    print("Original vectors")
+    print(f"qA: {qA}")
+    print(f"qD: {qD}")
 
-    qA = -qA * 5
-    qD = -qD * 5
+    qA = qA * 5
+    qD = qD * 5
 
     qA = qA + A_OFFSET
     qD = qD + D_OFFSET
 
-    print(qA)
-    print(qD)
+    print("Offset Vetcors")
+    print(f"qA: {qA}")
+    print(f"qD: {qD}")
 
     dqA = -dqA * 5
     dqD = -dqD * 5
@@ -365,8 +379,8 @@ if __name__ == "__main__":
     core.CANHelper.init("can0")
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
-    m_A = CanMotor(can0, MAX_SPEED=2000, motor_id=7, gear_ratio=1, name="A")  # m_A
-    m_D = CanMotor(can0, MAX_SPEED=2000, motor_id=0, gear_ratio=1, name="D")  # m_D
+    m_A = CanMotor(can0, MAX_SPEED=1000 if debug else 2000, motor_id=7, gear_ratio=1, name="A")  # m_A
+    m_D = CanMotor(can0, MAX_SPEED=1000 if debug else 2000, motor_id=0, gear_ratio=1, name="D")  # m_D
     motors = [m_A, m_D]
 
     motor_listener = MotorListener(motor_list=motors)
@@ -378,14 +392,25 @@ if __name__ == "__main__":
     print()
     input("Hey! I'm walking here!")
 
+    set_initial_position(A_OFFSET, D_OFFSET)
+    input()
+    set_initial_position(A_OFFSET + 0.8 * 5, D_OFFSET + 0.8 * 5)
+    input()
     set_initial_position(qA[0], qD[0])
     control = get_control_mode()
+
+    input()
 
     t = 0
     i = 0
 
+    print("Running path")
+
     while it == 0 or i < it:
         try:
+
+            if paused:
+                continue
 
             log()
             control()
@@ -404,6 +429,8 @@ if __name__ == "__main__":
                 with lock:
                     restart = False
 
+                print("Running path")
+
             if changed_file_n:
                 print("Changing .mat file...")
                 qA, qD, dqA, dqD, l = load_cycle(file_n)
@@ -415,8 +442,10 @@ if __name__ == "__main__":
                 with lock:
                     changed_file_n = False
 
+                print("Running path")
+
             if changed_control_mode:
-                print("Changing control mode...")
+                print(f"Changing control mode to {control_modes[control_index]}")
                 set_initial_position(A_OFFSET, D_OFFSET)
                 time.sleep(1)
                 set_initial_position(qA[0], qD[0])
@@ -425,6 +454,8 @@ if __name__ == "__main__":
                 t = 0
                 with lock:
                     changed_control_mode = False
+
+                print("Running path")
 
             t += 1
 
@@ -436,6 +467,6 @@ if __name__ == "__main__":
             time.sleep(1)
 
         except KeyboardInterrupt:
-            end()
+            graceful_end()
 
-    end()
+    graceful_end()
