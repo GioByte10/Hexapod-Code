@@ -188,7 +188,9 @@ class CanMotor(object):
 		elif msg.data[0] == 0x30:	# Read PID values
 			print(msg)
 			for element in msg.data:
-				print(element)
+				print(element, end=" ")
+
+			print()
 
 			index = msg.data[1]
 
@@ -210,6 +212,8 @@ class CanMotor(object):
 		elif msg.data[0] == 0x79:
 			print(msg)
 
+		elif msg.data[0] == 0x20:
+			print(f"Received 0x20: {msg}")
 
 		elif msg.data[0] == 0x92: # Read multi-turn position
 			byte_list = []
@@ -306,6 +310,11 @@ class CanMotor(object):
 		msg_data = [0x9A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 		self._single_send(msg_data)
 
+
+	def raw_send(self, msg_data):
+		self._single_send(msg_data)
+
+
 	def read_pid_once(self, delay = 0.02):
 		if self.motor_data.command_mode == "torque":
 			msg_data = [0x30, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
@@ -341,32 +350,37 @@ class CanMotor(object):
 		self._single_send(msg_data)
 
 
-	def write_pid(self, index, value, save=False):
-		# Writes a PID gain (like KP or KI) to the motor.
-		# index: parameter ID (e.g., 0x01 for current_KP)
-		# value: float value to set (e.g., 0.0 to disable)
-		# save: False = temporary (RAM); True = save to ROM
+	def write_control_command(self, index, value):
+		msg_data = [0x20, index, 0x00, 0x00]
+		msg_data += list(struct.pack('<I', value))  # convert float to bytes
+		print(f"0x20 msg_data: {msg_data}")
+		self._single_send(msg_data)
 
+
+	def write_pid(self, index, value, save=False):
 		cmd = 0x32 if save else 0x31
 		data = [cmd, index, 0x00, 0x00]
 		data += list(struct.pack('<f', value))  # convert float to bytes
 		print(data)
 		self._single_send(data)
 
-	def write_acceleration(self, index, value):
 
+	def write_acceleration(self, index, value):
 		data = [0x43, index, 0x00, 0x00]
 		data += list(struct.pack('<I', value))  # convert float to bytes
 		# print(data)
 		self._single_send(data)
 
+
 	def set_zero_offset(self):
 		data = [0x64, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 		self._single_send(data)
 
+
 	def write_system_reset(self):
 		data = [0x76, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 		self._single_send(data)
+
 
 	def motor_stop(self):
 		'''

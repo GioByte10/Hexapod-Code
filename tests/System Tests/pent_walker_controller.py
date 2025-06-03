@@ -41,19 +41,26 @@ control_modes = {
 }
 
 cycle_indexes = {
-    "1": 1,
-    "2": 2,
-    "3": 3,
-    "4": 4,
-    "short": 5
+
+    "short": 1,
+    "LN": 2,
+    "BC": 3,
+    "AD": 4,
+    "1": 5,
+    "2": 6,
+    "3": 7,
+    "4": 8,
 }
 
 cycle_names = {
-    1: "1",
-    2: "2",
-    3: "3",
-    4: "4",
-    5: "short"
+    1: "short",
+    2: "LN",
+    3: "BC",
+    4: "AD",
+    5: "1",
+    6: "2",
+    7: "3",
+    8: "4",
 }
 
 def noop(*args, **kwargs):
@@ -501,9 +508,9 @@ if __name__ == "__main__":
     print()
     input("Hey! I'm walking here!")
 
-    #set_initial_position(A_OFFSET, D_OFFSET)
+    set_initial_position(A_OFFSET, D_OFFSET)
     time.sleep(0.3)
-    #set_initial_position(qA[0], qD[0])
+    set_initial_position(qA[0], qD[0])
     control = get_control_mode()
 
     step = 0
