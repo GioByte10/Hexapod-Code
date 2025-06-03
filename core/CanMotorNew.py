@@ -119,6 +119,7 @@ class CanMotor(object):
 		print(f"{'Voltage:':<20} {self.motor_data.voltage}")
 		print(f"{'Error State:':<20} {self.motor_data.error_state}")
 		print(f"{'Last Update:':<20} {self.motor_data.last_update}")
+		print("End of datadump")
 
 	# Called everytime a new message for this motor is recieved, filters according to msg type (first byte)
 	def process_message(self, msg):
@@ -205,6 +206,9 @@ class CanMotor(object):
 			b4 = msg.data[7]
 
 			test = (np.frombuffer(np.uint32((b4 << 24) | (b3 << 16) | (b2 << 8) | b1).tobytes(), dtype=np.float32)[0])
+
+		elif msg.data[0] == 0x79:
+			print(msg)
 
 
 		elif msg.data[0] == 0x92: # Read multi-turn position
@@ -330,6 +334,12 @@ class CanMotor(object):
 
 			msg_data = [0x30, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 			self._single_send(msg_data)
+
+
+	def read_CANID_setting(self, read, CANID):
+		msg_data = [0x79, 0x00, read, 0x00, 0x00, 0x00, 0x00, CANID]
+		self._single_send(msg_data)
+
 
 	def write_pid(self, index, value, save=False):
 		# Writes a PID gain (like KP or KI) to the motor.
@@ -543,7 +553,7 @@ class CanMotor(object):
 			byte1, byte2, byte3, byte4 = self.utils.int_to_bytes(int(target_speed), 4)
 
 			# Set the data to the speed control command
-			msg.data = [0xa2, 0x00, 0x00, 0x00, byte4, byte3, byte2, byte1]
+			msg.data = [0xA2, 0x00, 0x00, 0x00, byte4, byte3, byte2, byte1]
 		
 		elif self.motor_data.command_mode == "position":
 			# Set the data to the position control command
