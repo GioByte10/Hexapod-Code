@@ -22,44 +22,31 @@ def restart_motors():
         motor.initialize_motor()
         motor.initialize_control_command()
 
-
-
 if __name__ == "__main__":
 
     core.CANHelper.init("can0")
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
     # motor = CanMotor(can0, motor_id=7, gear_ratio=1) #m_A
-    m_A = CanMotor(can0, MAX_SPEED=300, motor_id=8, gear_ratio=1, name="A")
-    m_D = CanMotor(can0, MAX_SPEED=300, motor_id=0, gear_ratio=1, name="D")
+    m_A = CanMotor(can0, MAX_SPEED=5 * 2 * math.pi, motor_id=8, gear_ratio=1, name="A")
+    m_D = CanMotor(can0, MAX_SPEED=5 * 2 * math.pi, motor_id=2, gear_ratio=1, name="D")
     motors = [m_A, m_D]
     motor_listener = MotorListener(motor_list=motors)
 
     notifier = can.Notifier(can0, [motor_listener])
-
-    # for motor in motors:
-    #     motor.write_pid(0x01, np.float32(1))
-    #     motor.write_pid(0x02, np.float32(1))
-    #
-    #     motor.write_pid(0x04, np.float32(1))
-    #     motor.write_pid(0x05, np.float32(1))
-    #
-    #     motor.write_pid(0x07, np.float32(10)) # KP
-    #     motor.write_pid(0x08, np.float32(1))
-    #     motor.write_pid(0x09, np.float32(5))
 
     restart_motors()
 
     time.sleep(1)
     input("Continue")
 
-    m_D.set_control_mode("position", 3)
-    m_D.control()
-    time.sleep(1)
-
-    m_A.set_control_mode("position", 3)
-    m_A.control()
-    time.sleep(1)
+    # m_D.set_control_mode("position", 3)
+    # m_D.control()
+    # time.sleep(1)
+    #
+    # m_A.set_control_mode("position", 3)
+    # m_A.control()
+    # time.sleep(1)
 
     t = 0
 
@@ -80,13 +67,13 @@ if __name__ == "__main__":
                 time.sleep(0.02)
                 motor.datadump()
 
-            m_D.set_control_mode("position", t)
+            m_D.set_control_mode("speed", 5 * 2 * math.pi)
             m_D.control()
             time.sleep(0.07)
-
-            m_A.set_control_mode("position", t)
-            m_A.control()
-            time.sleep(0.07)
+            #
+            # m_A.set_control_mode("position", t)
+            # m_A.control()
+            # time.sleep(0.07)
 
             t += 0.3
 

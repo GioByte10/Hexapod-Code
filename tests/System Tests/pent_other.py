@@ -30,8 +30,8 @@ if __name__ == "__main__":
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
     # motor = CanMotor(can0, motor_id=7, gear_ratio=1) #m_A
-    m_broken = CanMotor(can0, MAX_SPEED=300, motor_id=2, gear_ratio=1, name="Broken")
-    m_mounted = CanMotor(can0, MAX_SPEED=300, motor_id=0, gear_ratio=1, name="Mounted")
+    m_broken = CanMotor(can0, MAX_SPEED=300, motor_id=8, gear_ratio=1, name="A")
+    m_mounted = CanMotor(can0, MAX_SPEED=300, motor_id=2, gear_ratio=1, name="D")
     motors = [m_broken, m_mounted]
     motor_listener = MotorListener(motor_list=motors)
 
@@ -71,17 +71,6 @@ if __name__ == "__main__":
                 time.sleep(0.02)
                 motor.datadump()
 
-
-            m_broken.set_control_mode("position", 0.3)
-            m_broken.control()
-            time.sleep(0.07)
-
-            m_mounted.set_control_mode("position", 0.3)
-            m_mounted.control()
-            time.sleep(0.07)
-
-            m_broken.read_pid_once()
-            time.sleep(0.02)
 
             t += 0.3
 

@@ -14,8 +14,8 @@ import numpy as np
 import math
 import scipy.io
 
-A_OFFSET = 1.12
-D_OFFSET = 0.859
+A_OFFSET = 4.75 - 2 * math.pi
+D_OFFSET = 5.114 - 2 * math.pi
 RANGE = 10
 TOP_N = 3
 
@@ -209,7 +209,7 @@ def parse_arguments():
     return cycle_index, control_index, debug, slow, loop_target
 
 
-def set_initial_position(p_A, p_D):
+def set_initial_position(p_A, p_D, stop=False):
     m_A.set_control_mode("position", p_A)
     m_D.set_control_mode("position", p_D)
 
@@ -238,7 +238,7 @@ def set_initial_position(p_A, p_D):
         if kill_it:
             end()
 
-        if (m_A.motor_data.speed == 0 and m_D.motor_data.speed == 0 and
+        if (not stop or (m_A.motor_data.speed == 0 and m_D.motor_data.speed == 0) and
                 abs(m_A.motor_data.multiturn_position - p_A) < 0.1  and
                 abs(m_D.motor_data.multiturn_position - p_D) < 0.1):
             print("Positioned")
@@ -268,12 +268,16 @@ def load_cycle():
     qA = qA + A_OFFSET + 5 * math.pi / 2
     qD = qD + D_OFFSET + 5 * math.pi / 2
 
-    print("Offset Vectors")
-    print(f"qA: {qA}")
-    print(f"qD: {qD}")
+    print("Final Vectors")
+    print(f"qA: {qA}\n")
+    print(f"qD: {qD}\n")
 
     dqA = -dqA * 5
     dqD = -dqD * 5
+
+    print("Final Vectors")
+    print(f"dqA: {dqA}\n")
+    print(f"dqD: {dqD}\n")
 
     path_length = len(qA)
     print()
@@ -307,7 +311,7 @@ def get_control_mode():
     def speed_control():
 
         if step == 0:
-            set_initial_position(qA[0], qD[0])
+            set_initial_position(qA[0], qD[0], True)
 
         m_A.set_control_mode("speed", dqA[step])
         m_D.set_control_mode("speed", dqD[step])
@@ -495,8 +499,8 @@ if __name__ == "__main__":
     core.CANHelper.init("can0")
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
-    m_A = CanMotor(can0, MAX_SPEED=600 if slow else 2000, motor_id=2, gear_ratio=1, name="A")  # m_A
-    m_D = CanMotor(can0, MAX_SPEED=600 if slow else 2000, motor_id=0, gear_ratio=1, name="D")  # m_D
+    m_A = CanMotor(can0, MAX_SPEED=700 if slow else 2000, motor_id=8, gear_ratio=1, name="A")  # m_A
+    m_D = CanMotor(can0, MAX_SPEED=700 if slow else 2000, motor_id=2, gear_ratio=1, name="D")  # m_D
     motors = [m_A, m_D]
 
     motor_listener = MotorListener(motor_list=motors)
@@ -508,9 +512,9 @@ if __name__ == "__main__":
     print()
     input("Hey! I'm walking here!")
 
-    set_initial_position(A_OFFSET, D_OFFSET)
+    set_initial_position(A_OFFSET, D_OFFSET, True)
     time.sleep(0.3)
-    set_initial_position(qA[0], qD[0])
+    set_initial_position(qA[0], qD[0], True)
     control = get_control_mode()
 
     step = 0
