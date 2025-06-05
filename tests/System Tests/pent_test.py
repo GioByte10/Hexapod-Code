@@ -67,9 +67,9 @@ if __name__ == "__main__":
                 time.sleep(0.02)
                 motor.datadump()
 
-            m_D.set_control_mode("speed", 5 * 2 * math.pi)
-            m_D.control()
-            time.sleep(0.07)
+            # m_A.set_control_mode("speed", 5 * 2 * math.pi)
+            # m_A.control()
+            # time.sleep(0.07)
             #
             # m_A.set_control_mode("position", t)
             # m_A.control()
