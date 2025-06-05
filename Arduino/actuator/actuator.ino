@@ -1,5 +1,7 @@
 #include <LiquidCrystal_I2C.h>
 
+constexpr char END_CHAR = ']';
+
 constexpr uint8_t COLS = 20;
 constexpr uint8_t ROWS = 4;
 
@@ -51,20 +53,70 @@ void loop() {
 
   handleLCD();
 
+  delay(100);
+
+}
+
+
+void print_line(int &i, char readMsg[]){
+    while(readMsg[i] != END_CHAR)
+    lcd.print(readMsg[i++]);
+
+  i++;
 }
 
 void handleLCD(){
-  char readMsg[COLS * ROWS] = "";
+  char readMsg[COLS * ROWS + 4] = "";
   int i = 0;
 
-  while(Serial.available()){
+  while(Serial.available() > 0){
     readMsg[i] = Serial.read();
+    i++;
   }
 
   if(strlen(readMsg)){
     lcd.clear();
+
+    i = 0;
+
+    /////////////////////////////
+
     lcd.home();
-    lcd.print(readMsg);
+    print_line(i, readMsg);
+
+    //////////////////////////////
+
+    lcd.setCursor(0, 1);
+
+    lcd.print("cycle_");
+    print_line(i, readMsg);
+    lcd.print(".mat");
+
+    ////////////////////////////
+
+    lcd.setCursor(0, 2);
+
+    lcd.print("Control: ");
+    print_line(i, readMsg);
+
+    ///////////////////////////
+
+    lcd.setCursor(0, 3);
+    print_line(i, readMsg);
+    
+    // for(int row = 0; row < ROWS; row++){
+    //   lcd.home();
+    //   lcd.setCursor(0, row);
+
+    //   for(int col = 0; col < COLS; col++){
+    //     if(readMsg[i] == END_CHAR){
+    //       i++;
+    //       break;
+    //     }
+
+    //     lcd.print(readMsg[i++]);
+    //   }
+    // }
   }
 }
 
