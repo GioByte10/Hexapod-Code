@@ -13,9 +13,10 @@ import time
 import numpy as np
 import math
 import scipy.io
+import serial
 
-A_OFFSET = 4.75 - 2 * math.pi
-D_OFFSET = 5.114 - 2 * math.pi
+A_OFFSET = 4.8 - 2 * math.pi
+D_OFFSET = 5.4 - 2 * math.pi
 RANGE = 10
 TOP_N = 3
 
@@ -23,8 +24,10 @@ changed_file = False
 changed_control_mode = False
 restart = False
 paused = False
+paused_changed = False
 kill_it = False
 
+arduino_serial = serial.Serial('/dev/ttyACM0', 115200, timeout=5)
 
 thread_lock = threading.Lock()
 
@@ -121,7 +124,7 @@ def read_controller_inputs(device):
             elif control_index > len(control_indexes):
                 control_index -= len(control_indexes)
 
-    global restart, paused, kill_it
+    global restart, paused, kill_it, paused_changed
 
     for event in device.read_loop():
         if event.type == ecodes.EV_ABS and event.value:
@@ -143,6 +146,7 @@ def read_controller_inputs(device):
                 elif 'BTN_A' in key_event.keycode:
                     with thread_lock:
                         paused = not paused
+                        paused_changed = True
 
                 elif 'BTN_B':
                     with thread_lock:
@@ -151,11 +155,12 @@ def read_controller_inputs(device):
 
 def graceful_end():
     print("Ending")
-    set_initial_position(A_OFFSET, D_OFFSET)
+    set_initial_position(A_OFFSET, D_OFFSET, True)
     end()
 
 
 def end():
+    arduino_serial.close()
     for motor in motors:
         motor.stop_all_tasks()
         motor.motor_off()
@@ -209,7 +214,7 @@ def parse_arguments():
     return cycle_index, control_index, debug, slow, loop_target
 
 
-def set_initial_position(p_A, p_D, stop=False):
+def set_initial_position(p_A, p_D, stop=True):
     m_A.set_control_mode("position", p_A)
     m_D.set_control_mode("position", p_D)
 
@@ -237,6 +242,9 @@ def set_initial_position(p_A, p_D, stop=False):
 
         if kill_it:
             end()
+
+        # print(abs(m_A.motor_data.multiturn_position - p_A))
+        # print(abs(m_D.motor_data.multiturn_position - p_D))
 
         if (not stop or (m_A.motor_data.speed == 0 and m_D.motor_data.speed == 0) and
                 abs(m_A.motor_data.multiturn_position - p_A) < 0.1  and
@@ -437,12 +445,15 @@ def fake_main():
 
 
 def handle_restart():
-    global step, restart
+    global step, restart, paused
+
+    update_arduino()
 
     print("Restarting...")
     set_initial_position(A_OFFSET, D_OFFSET)
     time.sleep(1)
     set_initial_position(qA[0], qD[0])
+    update_arduino()
 
     step = 0
     with thread_lock:
@@ -454,8 +465,10 @@ def handle_restart():
 def handle_changed_file():
     global step, changed_file
 
+    update_arduino()
+
     print("Changing .mat file...")
-    qA, qD, dqA, dqD, path_length = load_cycle
+    qA, qD, dqA, dqD, path_length, period = load_cycle()
     set_initial_position(A_OFFSET, D_OFFSET)
     time.sleep(1)
     set_initial_position(qA[0], qD[0])
@@ -470,6 +483,8 @@ def handle_changed_file():
 def handle_changed_control_mode():
     global step, control, changed_control_mode
 
+    update_arduino()
+
     print(f"Changing control mode to {control_modes[control_index]}")
     set_initial_position(A_OFFSET, D_OFFSET)
     time.sleep(1)
@@ -481,6 +496,30 @@ def handle_changed_control_mode():
         changed_control_mode = False
 
     print("Running path")
+
+
+def handle_paused_changed():
+    global paused_changed
+
+    update_arduino()
+
+    m_A.motor_stop()
+    m_D.motor_stop()
+
+    with thread_lock:
+        paused_changed = False
+
+
+def update_arduino():
+    message = (f"Running {path_length} points" if not paused  else "Paused") + ']'
+    message += cycle_names[cycle_index] + ']'
+    message += control_modes[control_index] + ']'
+    message += "in memory of motor 7]"
+
+    message = message.encode()
+
+    arduino_serial.write(message)
+    arduino_serial.reset_input_buffer()
 
 
 if __name__ == "__main__":
@@ -511,6 +550,7 @@ if __name__ == "__main__":
     time.sleep(1)
     print()
     input("Hey! I'm walking here!")
+    update_arduino()
 
     set_initial_position(A_OFFSET, D_OFFSET, True)
     time.sleep(0.3)
@@ -524,6 +564,10 @@ if __name__ == "__main__":
 
     while loop_target == 0 or loop_count < loop_target:
         try:
+
+            if paused_changed:
+                handle_paused_changed()
+
             if paused:
                 continue
 
