@@ -1,6 +1,11 @@
 #include <LiquidCrystal_I2C.h>
+#include <TM1637TinyDisplay.h>
 
-constexpr char END_CHAR = ']';
+#define END_CHAR          ']'
+#define LCD_CHAR          '&'
+#define TM_START_CHAR     '%'
+#define TM_PAUSE_CHAR     '^'
+#define TM_CONTINUE_CHAR  ';'
 
 constexpr uint8_t COLS = 20;
 constexpr uint8_t ROWS = 4;
@@ -11,15 +16,29 @@ constexpr uint8_t PUL_PIN = 10;
 
 constexpr uint8_t BUT_PIN = 7;
 
+constexpr uint8_t CLK = 2;
+constexpr uint8_t DIO = 3;
+
+uint8_t dots = 0b01010000;
 bool enabled = false;
 int offRange = 90;
+bool pausedTime = true;
+
+unsigned long serialTimeStamp = 0;
+unsigned long tmTimeStamp = 0;
+
+int secs = 0;
+int csecs = 0;
 
 LiquidCrystal_I2C lcd(0x27, COLS, ROWS);
+TM1637TinyDisplay tm(CLK, DIO);
 
-void handleLCD();
 void handleENA();
 void handlePUL(int);
-
+void printLine(char readMsg[]);
+void readSerial();
+void handleLCD(char readMsg[], int i = 1);
+void displayTime();
 
 void setup() {
 
@@ -31,6 +50,9 @@ void setup() {
   lcd.print("Pantograph Walker");
   lcd.setCursor(0, 1);
   lcd.print("Trying to walk here");
+
+  tm.begin();
+  tm.flipDisplay(true);
 
   pinMode(PUL_PIN, OUTPUT);
   pinMode(DIR_PIN, OUTPUT);
@@ -48,24 +70,18 @@ void loop() {
   digitalWrite(DIR_PIN, v > 0 ? LOW : HIGH);
 
   handleENA();
-
   handlePUL(v);
 
-  handleLCD();
+  displayTime();
 
-  delay(100);
+  if(millis() - serialTimeStamp >= 150){
+    readSerial();
+    serialTimeStamp = millis();
+  }
 
 }
 
-
-void print_line(int &i, char readMsg[]){
-    while(readMsg[i] != END_CHAR)
-    lcd.print(readMsg[i++]);
-
-  i++;
-}
-
-void handleLCD(){
+void readSerial(){
   char readMsg[COLS * ROWS + 4] = "";
   int i = 0;
 
@@ -75,56 +91,70 @@ void handleLCD(){
   }
 
   if(strlen(readMsg)){
-    lcd.clear();
+    if(readMsg[0] == LCD_CHAR){
+      handleLCD(readMsg);
+    }
 
-    i = 0;
+    else if (readMsg[0] == TM_START_CHAR || readMsg[0] == TM_PAUSE_CHAR || readMsg[0] == TM_CONTINUE_CHAR){
+      tmTimeStamp = readMsg[0] == TM_START_CHAR ? millis() : tmTimeStamp;
+      pausedTime = (readMsg[0] == TM_PAUSE_CHAR);
 
-    /////////////////////////////
-
-    lcd.home();
-    print_line(i, readMsg);
-
-    //////////////////////////////
-
-    lcd.setCursor(0, 1);
-
-    lcd.print("cycle_");
-    print_line(i, readMsg);
-    lcd.print(".mat");
-
-    ////////////////////////////
-
-    lcd.setCursor(0, 2);
-
-    lcd.print("Control: ");
-    print_line(i, readMsg);
-
-    ///////////////////////////
-
-    lcd.setCursor(0, 3);
-    print_line(i, readMsg);
-    
-    // for(int row = 0; row < ROWS; row++){
-    //   lcd.home();
-    //   lcd.setCursor(0, row);
-
-    //   for(int col = 0; col < COLS; col++){
-    //     if(readMsg[i] == END_CHAR){
-    //       i++;
-    //       break;
-    //     }
-
-    //     lcd.print(readMsg[i++]);
-    //   }
-    // }
+      if(strlen(readMsg) > 2){
+        int i = 2;
+        while(readMsg[i++] != LCD_CHAR);
+        handleLCD(readMsg, i);
+      }
+    }
   }
+}
+
+void displayTime(){
+
+  if(!pausedTime){
+    secs = (millis() - tmTimeStamp) / 1000;
+    csecs = (millis() - tmTimeStamp) / 10;
+  }
+
+  tm.showNumberDec(secs, dots, true, 2, 0);
+  tm.showNumberDec(csecs, dots, true, 2, 2);
+}
+
+void handleLCD(char readMsg[], int i = 1){
+  
+  lcd.clear();
+
+  /////////////////////////////
+
+  lcd.home();
+  printLine(i, readMsg);
+
+  //////////////////////////////
+
+  lcd.setCursor(0, 1);
+
+  lcd.print("cycle_");
+  printLine(i, readMsg);
+  lcd.print(".mat");
+
+  ////////////////////////////
+
+  lcd.setCursor(0, 2);
+
+  lcd.print("Control: ");
+  printLine(i, readMsg);
+
+  ///////////////////////////
+
+  lcd.setCursor(0, 3);
+  printLine(i, readMsg);
+
 }
 
 void handleENA(){
     if(!digitalRead(BUT_PIN)){
-    enabled = !enabled;
-    digitalWrite(ENA_PIN, enabled);
-    delay(300);
+      enabled = !enabled;
+      digitalWrite(ENA_PIN, enabled);
+      delay(300);
   }
 }
 
@@ -137,4 +167,11 @@ void handlePUL(int v){
     digitalWrite(PUL_PIN, LOW);
     delayMicroseconds(5000 / (v - offRange));
   }
+}
+
+void printLine(int &i, char readMsg[]){
+    while(readMsg[i] != END_CHAR)
+    lcd.print(readMsg[i++]);
+
+  i++;
 }
