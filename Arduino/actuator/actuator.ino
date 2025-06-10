@@ -163,9 +163,9 @@ void handlePUL(int v){
 
   if(v > offRange){ 
     digitalWrite(PUL_PIN, HIGH);
-    delayMicroseconds(5000 / (v - offRange));
+    delayMicroseconds(50 / (v - offRange));
     digitalWrite(PUL_PIN, LOW);
-    delayMicroseconds(5000 / (v - offRange));
+    delayMicroseconds(50 / (v - offRange));
   }
 }
 
