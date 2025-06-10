@@ -1,0 +1,7 @@
+%Finding motor power curve
+RPM=[0 250 500 750 1000 1250 1500 1890];
+Current=[8.3 6 4.25 3 2 1.5 .75 0];
+Current_fit=polyfit(RPM,Current,3);
+t=linspace(0,2000);
+plot(RPM,Current,'ro')
+save("I_motor.mat",'Current_fit')

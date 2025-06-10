@@ -1,0 +1,72 @@
+clear; close all; clc;
+load("cycle_ShortHF.mat")
+
+color2= '#40E0D0'; %'#E1C16E';
+tcolor='#C41E3A';
+figure
+% Enlarge figure to full screen.
+set(gcf, 'Units', 'Normalized', 'OuterPosition', [0 0 1 1]);
+pause(.5)
+for i=1:np
+giflayout=tiledlayout(3,6);
+title(giflayout,'Short Configuration (High Force Mode)')
+subtitle(giflayout,'Foot Velocity = .1 m/s')
+nexttile([3 3])
+    plot(Workspace,'LineStyle',"none", 'FaceColor',color2,'FaceAlpha',.5);
+    hold on         
+    % plot(bestRect, 'FaceColor','#6495ED', 'FaceAlpha', 1,'LineStyle',"none");
+    plot(F(1,1:i),F(2,1:i),'-','LineWidth',3,'Color',[0	0.447 0.741]) % ,'Color',color2)
+    plot(Cycle_Poses(1,:,i),Cycle_Poses(2,:,i),'k','LineWidth',2)
+    rectangle('Position',[Cycle_Poses(1,4,i)-r_foot Cycle_Poses(2,4,i)-r_foot 2*r_foot 2*r_foot],'Curvature',[1 1],'LineWidth',2)
+    plot(F(1,i),F(2,i),'.','MarkerSize',30,'Color',tcolor)    
+    hold off
+    axis([-.2 .35 -.35 .25])
+    xlabel('x (m)')
+    ylabel('y (m)')
+    legend()
+    % axis equal
+
+    nexttile([1 3])
+    plot(t(1:i),qA(1:i),'LineWidth',3)
+    hold on
+    plot(t(1:i),qD(1:i),'LineWidth',3,'Color',color2)
+    plot([t(i) t(i)],[qA(i) qD(i)],'.','MarkerSize',30,'Color',tcolor)
+    title('Angular Position')
+    xlabel('time (s)')
+    ylabel('angle (rad)')
+    xline(t(stride_point_end),'--','LineWidth',3)
+    legend('qA','qD')
+    axis([t(1) t(end) min([qA qD]) max([qA qD])])
+    
+    
+    % Velocities
+    nexttile([1 3])
+    plot(t(1:i),dqA(1:i),'LineWidth',3)
+    hold on
+    plot(t(1:i),dqD(1:i),'LineWidth',3,'Color',color2)
+    plot([t(i) t(i)],[dqA(i) dqD(i)],'.','MarkerSize',30,'Color',tcolor)
+    title('Angular Velocities')
+    xlabel('time (s)')
+    ylabel('\omega (rad/s)')
+    xline(t(stride_point_end),'--','LineWidth',3)
+    legend('dqA','dqD')
+    axis([t(1) t(end) min([dqA dqD]) max([dqA dqD])])
+
+
+    % Forces
+    nexttile([1 3])
+    plot(t(1:i),R(1:i,1),'LineWidth',3)
+    hold on
+    plot(t(1:i),R(1:i,2),'LineWidth',3,'Color',color2)
+    plot([t(i) t(i)],[R(i,1) R(i,2)],'.','MarkerSize',30,'Color',tcolor)
+    axis tight
+    title('Pushing Forces')
+    xlabel('time (s)')
+    ylabel('Force (N)')
+    xline(t(stride_point_end),'--','LineWidth',3)
+    legend('Rx','Ry')
+    axis([t(1) t(end) min(R,[],'all') max(R,[],'all')])
+    drawnow
+    % pause(1)
+    exportgraphics(gcf,'ShortHF.gif','Append',true);
+end
