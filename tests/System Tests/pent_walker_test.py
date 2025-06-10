@@ -13,16 +13,9 @@ import time
 import numpy as np
 import math
 import scipy.io
-import serial
 
-END_CHAR            = ']'
-LCD_CHAR            = '&'
-TM_START_CHAR       = '%'
-TM_PAUSE_CHAR       = '^'
-TM_CONTINUE_CHAR    = ';'
-
-A_OFFSET = 4.8 - 2 * math.pi
-D_OFFSET = 5.4 - 2 * math.pi
+A_OFFSET = 3.286 - 2 * math.pi
+D_OFFSET = 0.6
 RANGE = 10
 TOP_N = 3
 
@@ -30,10 +23,8 @@ changed_file = False
 changed_control_mode = False
 restart = False
 paused = False
-paused_changed = False
 kill_it = False
 
-arduino_serial = serial.Serial('/dev/ttyACM0', 115200, timeout=5)
 
 thread_lock = threading.Lock()
 
@@ -50,28 +41,59 @@ control_modes = {
 }
 
 cycle_indexes = {
-    "slow": 1,
-    "short": 2,
-    "long": 3,
-    "BC": 4,
-    "AD": 5,
-    "1": 6,
-    "2": 7,
-    "3": 8,
-    "4": 9,
+
+    "short": 1,
+    "LN": 2,
+    "BC": 3,
+    "AD": 4,
+    "1": 5,
+    "2": 6,
+    "3": 7,
+    "4": 8,
 }
 
 cycle_names = {
-    1: "slow",
-    2: "short",
-    3: "long",
-    4: "BC",
-    5: "AD",
-    6: "1",
-    7: "2",
-    8: "3",
-    9: "4",
+    1: "short",
+    2: "LN",
+    3: "BC",
+    4: "AD",
+    5: "1",
+    6: "2",
+    7: "3",
+    8: "4",
 }
+
+def restart_pid():
+    for motor in motors:
+        msg_data = [0x31, 0x01, 0x64, 0x64, 0x28, 0x1e, 0x32, 0x32]
+        motor.raw_send(msg_data)
+        time.sleep(0.02)
+
+        msg_data = [0x31, 0x02, 0x64, 0x64, 0x28, 0x1e, 0x32, 0x32]
+        motor.raw_send(msg_data)
+        time.sleep(0.02)
+
+        msg_data = [0x31, 0x04, 0x64, 0x64, 0x28, 0x1e, 0x32, 0x32]
+        motor.raw_send(msg_data)
+        time.sleep(0.02)
+
+        msg_data = [0x31, 0x05, 0x64, 0x64, 0x28, 0x1e, 0x32, 0x32]
+        motor.raw_send(msg_data)
+        time.sleep(0.02)
+
+        msg_data = [0x32, 0x07, 0x64, 0x64, 0x28, 0x1e, 0x32, 0x32]
+        motor.raw_send(msg_data)
+        time.sleep(0.02)
+
+        msg_data = [0x32, 0x08, 0x64, 0x64, 0x28, 0x1e, 0x32, 0x32]
+        motor.raw_send(msg_data)
+        time.sleep(0.02)
+
+        msg_data = [0x32, 0x09, 0x64, 0x64, 0x28, 0x1e, 0x32, 0x32]
+        motor.raw_send(msg_data)
+        time.sleep(0.02)
+
+        motor.write_control_command(0x02, np.uint32(1))
 
 def noop(*args, **kwargs):
     pass
@@ -131,7 +153,7 @@ def read_controller_inputs(device):
             elif control_index > len(control_indexes):
                 control_index -= len(control_indexes)
 
-    global restart, paused, kill_it, paused_changed
+    global restart, paused, kill_it
 
     for event in device.read_loop():
         if event.type == ecodes.EV_ABS and event.value:
@@ -153,7 +175,6 @@ def read_controller_inputs(device):
                 elif 'BTN_A' in key_event.keycode:
                     with thread_lock:
                         paused = not paused
-                        paused_changed = True
 
                 elif 'BTN_B':
                     with thread_lock:
@@ -161,24 +182,12 @@ def read_controller_inputs(device):
 
 
 def graceful_end():
-    global paused
-    with thread_lock:
-        paused = True
-
-    update_tm()
-
     print("Ending")
-    set_position(A_OFFSET, D_OFFSET, True)
+    set_initial_position(A_OFFSET, D_OFFSET)
     end()
 
 
 def end():
-    global paused
-    with thread_lock:
-        paused = True
-
-    update_tm()
-    arduino_serial.close()
     for motor in motors:
         motor.stop_all_tasks()
         motor.motor_off()
@@ -192,11 +201,11 @@ def end():
 
 def restart_motors():
     for motor in motors:
-        motor.write_acceleration(0x00, np.uint32(60000))
-        motor.write_acceleration(0x01, np.uint32(60000))
+        motor.write_acceleration(0x00, np.uint32(600))
+        motor.write_acceleration(0x01, np.uint32(600))
 
-        motor.write_acceleration(0x02, np.uint32(0))
-        motor.write_acceleration(0x03, np.uint32(0))
+        motor.write_acceleration(0x02, np.uint32(600))
+        motor.write_acceleration(0x03, np.uint32(600))
 
         motor.initialize_motor()
         motor.initialize_control_command()
@@ -232,7 +241,7 @@ def parse_arguments():
     return cycle_index, control_index, debug, slow, loop_target
 
 
-def set_position(p_A, p_D, stop=True):
+def set_initial_position(p_A, p_D, stop=False):
     m_A.set_control_mode("position", p_A)
     m_D.set_control_mode("position", p_D)
 
@@ -244,8 +253,6 @@ def set_position(p_A, p_D, stop=True):
 
     print()
     print("Positioning...")
-    print(f'p_A = {p_A}')
-    print(f'p_D = {p_D}')
 
     while True:
         m_A.read_motor_state_once()
@@ -258,18 +265,30 @@ def set_position(p_A, p_D, stop=True):
         m_D.read_multiturn_once()
         time.sleep(0.02)
 
+        print(f'p_A = {p_A} m_A = {m_A.motor_data.multiturn_position}')
+        print(f'p_D = {p_D} m_D = {m_D.motor_data.multiturn_position}')
+
         if kill_it:
             end()
-
-        # print(abs(m_A.motor_data.multiturn_position - p_A))
-        # print(abs(m_D.motor_data.multiturn_position - p_D))
 
         if (not stop or (m_A.motor_data.speed == 0 and m_D.motor_data.speed == 0) and
                 abs(m_A.motor_data.multiturn_position - p_A) < 0.1  and
                 abs(m_D.motor_data.multiturn_position - p_D) < 0.1):
+
+            print(abs(m_A.motor_data.multiturn_position - p_A) < 0.1)
+            print(abs(m_D.motor_data.multiturn_position - p_D) < 0.1)
             print("Positioned")
             print()
             break
+
+        m_A.set_control_mode("position", p_A)
+        m_D.set_control_mode("position", p_D)
+
+        m_A.control()
+        time.sleep(0.02)
+
+        m_D.control()
+        time.sleep(0.02)
 
 
 # noinspection PyUnresolvedReferences
@@ -337,13 +356,11 @@ def get_control_mode():
     def speed_control():
 
         if step == 0:
-            set_position(qA[0], qD[0])
+            set_initial_position(qA[0], qD[0], True)
 
         m_A.set_control_mode("speed", dqA[step])
         m_D.set_control_mode("speed", dqD[step])
 
-        # print(period)
-        # print(period / (2.0 * path_length))
         m_A.control()
         time.sleep(period / (2.0 * path_length))
 
@@ -353,9 +370,6 @@ def get_control_mode():
 
     def shape_control():
         global step
-
-        if step == 0:
-            set_position(qA[0], qD[0])
 
         m_A.read_motor_state_once()
         time.sleep(0.005)
@@ -380,15 +394,8 @@ def get_control_mode():
             q2 = qA
 
         else:
-            #step += 1
-            m_A.set_control_mode("speed", dqA[step])
-            m_D.set_control_mode("speed", dqD[step])
-
-            m_A.control()
-            time.sleep(0.5 * ((period / path_length) - 0.005 * 4))
-
-            m_D.control()
-            time.sleep(0.5 * ((period / path_length) - 0.005 * 4))
+            print("early exit")
+            step += 1
             return
 
         start = step - int(RANGE / 2)
@@ -427,22 +434,18 @@ def get_control_mode():
                 closest_index = index
 
         step = closest_index
-
-        print(period)
-        print(0.5 * ((period / path_length) - 0.005 * 4))
         print(f'This is t: {step}')
-        #input()
+        # #input()
 
         m_A.set_control_mode("speed", dqA[step])
         m_D.set_control_mode("speed", dqD[step])
 
         m_A.control()
-        time.sleep(0.5 * ((period / path_length) - 0.005 * 4))
+        time.sleep(period / (2 * path_length))
 
         m_D.control()
-        time.sleep(0.5 * ((period / path_length) - 0.005 * 4))
+        time.sleep(period / (2 * path_length))
 
-    print(f"Control mode: {control_modes[control_index]}")
 
     if control_modes[control_index] == "position":
         return position_control
@@ -479,50 +482,43 @@ def fake_main():
 
 
 def handle_restart():
-    global step, restart, paused
-
-    update_lcd()
+    global step, restart
 
     print("Restarting...")
-    set_position(A_OFFSET, D_OFFSET)
+    set_initial_position(A_OFFSET, D_OFFSET)
     time.sleep(1)
-    set_position(qA[0], qD[0])
+    set_initial_position(qA[0], qD[0])
 
     step = 0
     with thread_lock:
         restart = False
 
     print("Running path")
-    update_tm()
 
 
 def handle_changed_file():
     global step, changed_file
 
-    update_lcd()
-
     print("Changing .mat file...")
-    qA, qD, dqA, dqD, path_length, period = load_cycle()
-    set_position(A_OFFSET, D_OFFSET)
+    qA, qD, dqA, dqD, path_length = load_cycle
+    set_initial_position(A_OFFSET, D_OFFSET)
     time.sleep(1)
-    set_position(qA[0], qD[0])
+    set_initial_position(qA[0], qD[0])
 
     step = 0
     with thread_lock:
         changed_file = False
 
     print("Running path")
-    update_tm()
 
 
 def handle_changed_control_mode():
     global step, control, changed_control_mode
 
-    update_lcd()
-
-    set_position(A_OFFSET, D_OFFSET)
+    print(f"Changing control mode to {control_modes[control_index]}")
+    set_initial_position(A_OFFSET, D_OFFSET)
     time.sleep(1)
-    set_position(qA[0], qD[0])
+    set_initial_position(qA[0], qD[0])
     control = get_control_mode()
 
     step = 0
@@ -530,62 +526,12 @@ def handle_changed_control_mode():
         changed_control_mode = False
 
     print("Running path")
-    update_tm()
-
-
-def handle_paused_changed():
-    global paused_changed
-
-    update_tm()
-    update_lcd()
-
-    m_A.motor_stop()
-    m_D.motor_stop()
-
-    with thread_lock:
-        paused_changed = False
-
-
-def update_lcd():
-    message = LCD_CHAR + (f"Running {path_length} points" if not paused  else "Paused") + END_CHAR
-    message += cycle_names[cycle_index] + END_CHAR
-    message += control_modes[control_index] + END_CHAR
-    message += "in memory of motor 7" + END_CHAR
-
-    message = message.encode()
-    arduino_serial.write(message)
-    arduino_serial.reset_input_buffer()
-
-
-def update_tm():
-
-    if paused:
-        message = TM_PAUSE_CHAR + TM_PAUSE_CHAR
-        message = message.encode()
-
-        arduino_serial.write(message)
-        arduino_serial.reset_input_buffer()
-
-    elif step == 0:
-        message = TM_START_CHAR + TM_START_CHAR
-        message = message.encode()
-
-        arduino_serial.write(message)
-        arduino_serial.reset_input_buffer()
-
-    else:
-        message = TM_START_CHAR + TM_START_CHAR
-        message = message.encode()
-
-        arduino_serial.write(message)
-        arduino_serial.reset_input_buffer()
 
 
 if __name__ == "__main__":
 
     cycle_index, control_index, debug, slow, loop_target = parse_arguments()
     qA, qD, dqA, dqD, path_length, period = load_cycle()
-    control = get_control_mode()
 
     log = datadump if debug else noop
 
@@ -598,43 +544,38 @@ if __name__ == "__main__":
     core.CANHelper.init("can0")
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
-    m_A = CanMotor(can0, MAX_SPEED=700 if slow else 2000, motor_id=8, gear_ratio=1, name="A")  # m_A
-    m_D = CanMotor(can0, MAX_SPEED=700 if slow else 2000, motor_id=2, gear_ratio=1, name="D")  # m_D
+    m_A = CanMotor(can0, MAX_SPEED=700 if slow else 1000, motor_id=8, gear_ratio=1, name="A")  # m_A
+    m_D = CanMotor(can0, MAX_SPEED=700 if slow else 1000, motor_id=2, gear_ratio=1, name="D")  # m_D
     motors = [m_A, m_D]
 
     motor_listener = MotorListener(motor_list=motors)
     notifier = can.Notifier(can0, [motor_listener])
 
+    restart_pid()
     restart_motors()
 
     time.sleep(1)
     print()
     input("Hey! I'm walking here!")
-    update_lcd()
 
-    set_position(A_OFFSET, D_OFFSET, True)
+    set_initial_position(A_OFFSET, D_OFFSET, True)
     time.sleep(0.3)
-    set_position(qA[0], qD[0], True)
+    set_initial_position(qA[0], qD[0], True)
+    control = get_control_mode()
 
     step = 0
     loop_count = 0
 
     print("Running path")
-    update_tm()
 
     while loop_target == 0 or loop_count < loop_target:
         try:
-
-            if paused_changed:
-                handle_paused_changed()
-
             if paused:
                 continue
 
             if step == path_length - 1:
                 step = 0
                 loop_count += 1
-                update_tm()
 
             log()
             control()
