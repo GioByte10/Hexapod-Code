@@ -21,8 +21,8 @@ TM_START_CHAR       = '%'
 TM_PAUSE_CHAR       = '^'
 TM_CONTINUE_CHAR    = ';'
 
-A_OFFSET = 4.8 - 2 * math.pi
-D_OFFSET = 5.4 - 2 * math.pi
+A_OFFSET = -0.27 * 5
+D_OFFSET = 0.85
 RANGE = 10
 TOP_N = 3
 
@@ -39,38 +39,23 @@ thread_lock = threading.Lock()
 
 control_indexes = {
     "p": 1,
-    "v": 2,
-    "s": 3
+    "v": 2
 }
 
 control_modes = {
     1: "position",
-    2: "speed",
-    3: "shape"
+    2: "speed"
 }
 
 cycle_indexes = {
-    "slow": 1,
-    "short": 2,
-    "long": 3,
-    "BC": 4,
-    "AD": 5,
-    "1": 6,
-    "2": 7,
-    "3": 8,
-    "4": 9,
+    "1": 1,
+    "short": 2
+
 }
 
 cycle_names = {
-    1: "slow",
-    2: "short",
-    3: "long",
-    4: "BC",
-    5: "AD",
-    6: "1",
-    7: "2",
-    8: "3",
-    9: "4",
+    1: "1",
+    2: "short"
 }
 
 def noop(*args, **kwargs):
@@ -168,7 +153,7 @@ def graceful_end():
     update_tm()
 
     print("Ending")
-    set_position(A_OFFSET, D_OFFSET, True)
+    set_position(A_OFFSET, D_OFFSET, 2)
     end()
 
 
@@ -232,7 +217,7 @@ def parse_arguments():
     return cycle_index, control_index, debug, slow, loop_target
 
 
-def set_position(p_A, p_D, stop=True):
+def set_position(p_A, p_D, t=0.3):
     m_A.set_control_mode("position", p_A)
     m_D.set_control_mode("position", p_D)
 
@@ -247,29 +232,40 @@ def set_position(p_A, p_D, stop=True):
     print(f'p_A = {p_A}')
     print(f'p_D = {p_D}')
 
-    while True:
-        m_A.read_motor_state_once()
-        time.sleep(0.02)
-        m_A.read_multiturn_once()
-        time.sleep(0.02)
+    time.sleep(t)
 
-        m_D.read_motor_state_once()
-        time.sleep(0.02)
-        m_D.read_multiturn_once()
-        time.sleep(0.02)
-
-        if kill_it:
-            end()
-
-        # print(abs(m_A.motor_data.multiturn_position - p_A))
-        # print(abs(m_D.motor_data.multiturn_position - p_D))
-
-        if (not stop or (m_A.motor_data.speed == 0 and m_D.motor_data.speed == 0) and
-                abs(m_A.motor_data.multiturn_position - p_A) < 0.1  and
-                abs(m_D.motor_data.multiturn_position - p_D) < 0.1):
-            print("Positioned")
-            print()
-            break
+    # while True:
+    #     m_A.read_motor_state_once()
+    #     time.sleep(0.02)
+    #     m_A.read_multiturn_once()
+    #     time.sleep(0.02)
+    #
+    #     m_D.read_motor_state_once()
+    #     time.sleep(0.02)
+    #     m_D.read_multiturn_once()
+    #     time.sleep(0.02)
+    #
+    #     if kill_it:
+    #         end()
+    #
+    #     # print(abs(m_A.motor_data.multiturn_position - p_A))
+    #     # print(abs(m_D.motor_data.multiturn_position - p_D))
+    #
+    #     if (not stop or (m_A.motor_data.speed == 0 and m_D.motor_data.speed == 0) and
+    #             abs(m_A.motor_data.multiturn_position - p_A) < 0.1  and
+    #             abs(m_D.motor_data.multiturn_position - p_D) < 0.1):
+    #         print("Positioned")
+    #         print()
+    #         break
+    #
+    #     m_A.set_control_mode("position", p_A)
+    #     m_D.set_control_mode("position", p_D)
+    #
+    #     m_A.control()
+    #     time.sleep(0.02)
+    #
+    #     m_D.control()
+    #     time.sleep(0.02)
 
 
 # noinspection PyUnresolvedReferences
@@ -328,10 +324,10 @@ def get_control_mode():
         m_D.set_control_mode("position", qD[step])
 
         m_A.control()
-        time.sleep(0.005)
+        time.sleep(0.008)
 
         m_D.control()
-        time.sleep(0.005)
+        time.sleep(0.008)
 
 
     def speed_control():
@@ -484,9 +480,9 @@ def handle_restart():
     update_lcd()
 
     print("Restarting...")
-    set_position(A_OFFSET, D_OFFSET)
+    set_position(A_OFFSET, D_OFFSET, 1)
     time.sleep(1)
-    set_position(qA[0], qD[0])
+    set_position(qA[0], qD[0], 0.5)
 
     step = 0
     with thread_lock:
@@ -497,15 +493,15 @@ def handle_restart():
 
 
 def handle_changed_file():
-    global step, changed_file
+    global step, changed_file, qA, qD, dqA, dqD, path_length, period
 
     update_lcd()
 
     print("Changing .mat file...")
     qA, qD, dqA, dqD, path_length, period = load_cycle()
-    set_position(A_OFFSET, D_OFFSET)
+    set_position(A_OFFSET, D_OFFSET, 1)
     time.sleep(1)
-    set_position(qA[0], qD[0])
+    set_position(qA[0], qD[0], 0.5)
 
     step = 0
     with thread_lock:
@@ -520,9 +516,9 @@ def handle_changed_control_mode():
 
     update_lcd()
 
-    set_position(A_OFFSET, D_OFFSET)
+    set_position(A_OFFSET, D_OFFSET, 1)
     time.sleep(1)
-    set_position(qA[0], qD[0])
+    set_position(qA[0], qD[0], 0.5)
     control = get_control_mode()
 
     step = 0
@@ -598,8 +594,8 @@ if __name__ == "__main__":
     core.CANHelper.init("can0")
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
-    m_A = CanMotor(can0, MAX_SPEED=700 if slow else 2000, motor_id=8, gear_ratio=1, name="A")  # m_A
-    m_D = CanMotor(can0, MAX_SPEED=700 if slow else 2000, motor_id=2, gear_ratio=1, name="D")  # m_D
+    m_A = CanMotor(can0, MAX_SPEED=700 if slow else 1000, motor_id=0, gear_ratio=1, name="A")  # m_A
+    m_D = CanMotor(can0, MAX_SPEED=700 if slow else 1000, motor_id=2, gear_ratio=1, name="D")  # m_D
     motors = [m_A, m_D]
 
     motor_listener = MotorListener(motor_list=motors)
@@ -612,9 +608,9 @@ if __name__ == "__main__":
     input("Hey! I'm walking here!")
     update_lcd()
 
-    set_position(A_OFFSET, D_OFFSET, True)
+    set_position(A_OFFSET, D_OFFSET, 1)
     time.sleep(0.3)
-    set_position(qA[0], qD[0], True)
+    set_position(qA[0], qD[0], 0.5)
 
     step = 0
     loop_count = 0

@@ -30,7 +30,7 @@ if __name__ == "__main__":
     can0 = can.ThreadSafeBus(channel='can0', bustype='socketcan')
 
     # motor = CanMotor(can0, motor_id=7, gear_ratio=1) #m_A
-    m_broken = CanMotor(can0, MAX_SPEED=300, motor_id=2, gear_ratio=1, name="Broken")
+    m_broken = CanMotor(can0, MAX_SPEED=300, motor_id=0, gear_ratio=1, name="Broken")
     motors = [m_broken]
     motor_listener = MotorListener(motor_list=motors)
 
